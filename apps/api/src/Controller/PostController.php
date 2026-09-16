@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use App\Administration\PostImageService;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use App\Administration\PostManagementService;
 use App\Enum\PostStatus;
 use App\Http\ApiInput;
@@ -22,7 +26,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class PostController
 {
-    public function __construct(private CurrentActor $actor, private PostDirectory $directory, private PostManagementService $posts)
+    public function __construct(
+        private CurrentActor $actor, 
+        private PostDirectory $directory, 
+        private PostManagementService $posts,
+        private PostImageService $images,)
     {
     }
 
@@ -106,4 +114,77 @@ final readonly class PostController
     {
         return new JsonResponse($data, headers: ['Cache-Control' => 'no-store']);
     }
+
+    #[Route(
+        '/api/posts/{id}/images',
+        name: 'api_post_image_upload',
+        requirements: ['id' => '[0-9]+'],
+        methods: ['POST']
+    )]
+    public function uploadImage(string $id, Request $request): JsonResponse
+    {
+        $this->noQuery($request);
+
+        $file = $request->files->get('file');
+
+        if (!$file instanceof UploadedFile) {
+            throw new UnprocessableEntityHttpException(
+                'Envie uma imagem no campo "file".'
+            );
+        }
+
+        $image = $this->images->upload(
+            $this->actor->get(),
+            ApiInput::id($id),
+            $file,
+        );
+
+        return new JsonResponse(
+            ['image' => $image],
+            201,
+            ['Cache-Control' => 'no-store'],
+        );
+    }
+
+    #[Route(
+    '/api/posts/{postId}/images/{imageId}',
+    name: 'api_post_image',
+    requirements: [
+        'postId' => '[0-9]+',
+        'imageId' => '[0-9]+',
+    ],
+    methods: ['GET']
+)]
+public function image(
+    string $postId,
+    string $imageId,
+    Request $request,
+): BinaryFileResponse {
+    $this->noQuery($request);
+
+    $image = $this->images->getForRead(
+        $this->actor->get(),
+        ApiInput::id($postId),
+        ApiInput::id($imageId),
+    );
+
+    $response = new BinaryFileResponse($image['path']);
+
+    $response->headers->set(
+        'Content-Type',
+        $image['mime_type']
+    );
+
+    $response->headers->set(
+        'Cache-Control',
+        'no-store, max-age=300'
+    );
+
+    $response->setContentDisposition(
+        ResponseHeaderBag::DISPOSITION_INLINE,
+        $image['original_name']
+    );
+
+    return $response;
+}
 }

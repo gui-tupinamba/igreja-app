@@ -25,6 +25,15 @@ export interface Page<T> {
   items: T[];
   pagination: { page: number; limit: number; total: number };
 }
+
+export interface ContentImage {
+  id: number;
+  position: number;
+  mime_type: string;
+  size: number;
+  url: string;
+}
+
 export interface Content {
   id: number;
   title: string;
@@ -36,6 +45,7 @@ export interface Content {
   author_id?: number;
   created_by?: number;
   comments_enabled?: boolean;
+  images?: ContentImage[];
   starts_at?: string;
   ends_at?: string | null;
   published_at?: string | null;

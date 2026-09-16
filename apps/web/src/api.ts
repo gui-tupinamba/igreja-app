@@ -18,6 +18,19 @@ export class ApiError extends Error {
 let token: string | null = null;
 let generation = 0;
 let refreshing: Promise<User> | null = null;
+
+const imageCache = new Map<
+  string,
+  {
+    blob: Blob;
+    expiresAt: number;
+  }
+>();
+
+const imageRequests = new Map<string, Promise<Blob>>();
+
+const IMAGE_CACHE_TIME = 5 * 60 * 1000;
+
 const listeners = new Set<(user: User | null) => void>();
 const channel =
   typeof BroadcastChannel !== "undefined"
@@ -33,6 +46,10 @@ export function subscribeSession(fn: (user: User | null) => void) {
 export function clearSession(broadcast = false) {
   generation++;
   token = null;
+
+  imageCache.clear();
+  imageRequests.clear();
+  
   emit(null);
   if (broadcast) channel?.postMessage("changed");
 }
@@ -63,6 +80,7 @@ async function decode<T>(response: Response): Promise<T> {
   }
   return payload as T;
 }
+
 async function auth(path: string, body: object) {
   return decode<{ access_token: string; user: User }>(
     await fetch(`${API_URL}/auth/${path}`, {
@@ -78,6 +96,7 @@ async function auth(path: string, body: object) {
     }),
   );
 }
+
 export async function login(email: string, password: string) {
   const current = ++generation;
   return lock(async () => {
@@ -90,6 +109,7 @@ export async function login(email: string, password: string) {
     return result.user;
   });
 }
+
 export function refresh(): Promise<User> {
   if (refreshing) return refreshing;
   const current = generation;
@@ -110,12 +130,14 @@ export function refresh(): Promise<User> {
     });
   return refreshing;
 }
+
 export async function logout() {
   await lock(async () => {
     await auth("logout", {});
     clearSession(true);
   });
 }
+
 export async function api<T>(
   path: string,
   method = "GET",
@@ -144,6 +166,118 @@ export async function api<T>(
     return result;
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      0,
+      "Sem conexão com o servidor. Verifique sua conexão e tente novamente.",
+    );
+  }
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const cached = imageCache.get(path);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.blob;
+  }
+
+  const existingRequest = imageRequests.get(path);
+
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = (async () => {
+    const current = generation;
+
+    const send = () =>
+      fetch(`${API_URL}${path}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+    try {
+      let response = await send();
+
+      if (response.status === 401 && current === generation) {
+        await refresh();
+        response = await send();
+      }
+
+      if (current !== generation) {
+        throw new ApiError(401, "A sessão mudou. Entre novamente.");
+      }
+
+      if (!response.ok) {
+        await decode<never>(response);
+
+        throw new ApiError(
+          response.status,
+          "Não foi possível carregar a imagem.",
+        );
+      }
+
+      const blob = await response.blob();
+
+      imageCache.set(path, {
+        blob,
+        expiresAt: Date.now() + IMAGE_CACHE_TIME,
+      });
+
+      return blob;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      throw new ApiError(0, "Não foi possível carregar a imagem.");
+    }
+  })().finally(() => {
+    imageRequests.delete(path);
+  });
+
+  imageRequests.set(path, request);
+
+  return request;
+}
+
+export async function apiForm<T>(
+  path: string,
+  form: FormData,
+  method = "POST",
+): Promise<T> {
+  const current = generation;
+
+  const send = () =>
+    fetch(`${API_URL}${path}`, {
+      method,
+      credentials: "include",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: form,
+    });
+
+  try {
+    let response = await send();
+
+    if (response.status === 401 && current === generation) {
+      await refresh();
+      response = await send();
+    }
+
+    if (current !== generation) {
+      throw new ApiError(401, "A sessão mudou. Entre novamente.");
+    }
+
+    return await decode<T>(response);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
     throw new ApiError(
       0,
       "Sem conexão com o servidor. Verifique sua conexão e tente novamente.",

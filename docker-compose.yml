@@ -51,6 +51,8 @@ services:
         max-file: "3"
 
   php:
+    volumes:
+      - post_uploads:/var/www/api/var/uploads
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -93,6 +95,7 @@ services:
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - post_uploads:/var/www/api/var/uploads:ro
     depends_on:
       php:
         condition: service_healthy
@@ -121,8 +124,10 @@ services:
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
       TZ: UTC
       PGTZ: UTC
+
     volumes:
       - ./docker/postgres/10-create-app-user.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro
+
     tmpfs:
       - /var/lib/postgresql/data:size=512m
     networks:
@@ -175,6 +180,7 @@ secrets:
 
 volumes:
   postgres_data:
+  post_uploads:
 
 networks:
   edge:

@@ -11,7 +11,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { api } from "../api";
+import { api, apiBlob, apiForm, ApiError } from "../api";
 import { useSession } from "../session";
 import {
   Badge,
@@ -32,7 +32,7 @@ import {
   text,
   useData,
 } from "../ui";
-import type { Comment, Content, Page } from "../types";
+import type { Comment, Content, ContentImage, Page } from "../types";
 
 type Kind = "posts" | "events" | "schedules";
 const configs = {
@@ -214,6 +214,11 @@ export function ContentPage({ kind }: { kind: Kind }) {
         <div className={kind === "posts" ? "content-grid" : "event-list"}>
           {list.data.items.map((item) => (
             <article className="content-card" key={item.id}>
+              {kind === "posts" && (
+                <ProtectedPostImage 
+                image={item.images?.[0]} 
+                alt={item.title} />
+              )}
               <div className="row-meta">
                 <span className="ministry-tag">
                   {item.ministry_id
@@ -223,6 +228,8 @@ export function ContentPage({ kind }: { kind: Kind }) {
                 </span>
                 <Badge value={item.status} />
               </div>
+
+
               <button
                 className="card-title"
                 onClick={() => setSelected(item.id)}
@@ -390,13 +397,13 @@ export function ContentEditor({
         onSecondarySave={
           !item && kind === "posts"
             ? async (f) => {
-                await saveContent(kind, item, f);
+                await saveContentWithImages(kind, item, f);
               }
             : undefined
         }
 
         onSave={async (f) => {
-          const result = await saveContent(kind, item, f);
+          const result = await saveContentWithImages(kind, item, f);
 
           if (!item && kind === "posts") {
             const post = result[config.field];
@@ -448,6 +455,20 @@ export function ContentEditor({
             defaultValue={item?.content || item?.description || ""}
           />
         </label>
+        {kind === "posts" && !item && (
+          <label>
+            Imagens (opcional)
+            <input
+              type="file"
+              name="images"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+            />
+            <span className="hint">
+              Até 5 imagens. JPEG, PNG ou WebP. Máximo de 5 MB por imagem.
+            </span>
+          </label>
+        )}
         {kind === "posts" ? (
           <label className="checkbox">
             <input
@@ -545,6 +566,13 @@ function ContentDetail({
       ) : (
         item && (
           <>
+            {kind === "posts" && (
+              <ProtectedPostImage
+                image={item.images?.[0]}
+                alt={item.title}
+                variant="detail"
+              />
+            )}
             <div className="detail-meta">
               <Badge value={item.status} />
               <Badge value={item.visibility} />
@@ -688,6 +716,7 @@ function Comments({
               <span>{date(c.created_at)}</span>
               {c.status === "HIDDEN" && <Badge value={c.status} />}
             </div>
+
             <p className="prose">{c.content}</p>
             <div className="comment-actions">
               {c.user_id === user.id &&
@@ -826,11 +855,61 @@ function Comments({
   );
 }
 
-async function saveContent(
+function getPostImages(f: FormData): File[] {
+  return f
+    .getAll("images")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+function validatePostImages(files: File[]) {
+  if (files.length > 5) {
+    throw new ApiError(422, "Selecione no máximo 5 imagens.");
+  }
+
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+
+  for (const file of files) {
+    if (!allowed.includes(file.type)) {
+      throw new ApiError(422, "Utilize apenas imagens JPEG, PNG ou WebP.");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new ApiError(422, `A imagem "${file.name}" possui mais de 5 MB.`);
+    }
+  }
+}
+
+async function uploadPostImages(postId: number, files: File[]) {
+  for (const file of files) {
+    const body = new FormData();
+
+    body.append("file", file);
+
+    await apiForm(`/posts/${postId}/images`, body);
+  }
+}
+
+async function saveContentWithImages(
   kind: Kind,
   item: Content | undefined,
   f: FormData,
 ) {
+  const files = kind === "posts" && !item ? getPostImages(f) : [];
+
+  validatePostImages(files);
+
+  const result = await saveContent(kind, item, f);
+
+  if (kind === "posts" && !item && files.length) {
+    const post = result.post;
+
+    await uploadPostImages(post.id, files);
+  }
+
+  return result;
+}
+
+async function saveContent(kind: Kind, item: Content | undefined, f: FormData) {
   const ministry = text(f, "ministry_id");
 
   const body = {
@@ -859,5 +938,70 @@ async function saveContent(
     `/${kind}${item ? `/${item.id}` : ""}`,
     item ? "PATCH" : "POST",
     body,
+  );
+}
+
+function ProtectedPostImage({
+  image,
+  alt,
+  variant = "card",
+}: {
+  image?: ContentImage;
+  alt: string;
+  variant?: "card" | "detail";
+}) {
+  const [src, setSrc] = useState<string>(image ? "" : "/post-default.jpg");
+
+  useEffect(() => {
+    if (!image) {
+      setSrc("/post-default.jpg");
+      return;
+    }
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    apiBlob(image.url)
+      .then((blob) => {
+        if (!active) return;
+
+        objectUrl = URL.createObjectURL(blob);
+        setSrc(objectUrl);
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar imagem:", error);
+
+        if (active) {
+          setSrc("/post-default.jpg");
+        }
+      });
+
+    return () => {
+      active = false;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [image]);
+
+  if (!src) {
+    return (
+      <div
+        className={
+          variant === "detail"
+            ? "post-detail-image-loading"
+            : "post-card-image-loading"
+        }
+      />
+    );
+  }
+
+  return (
+    <img
+      className={variant === "detail" ? "post-detail-image" : "post-card-image"}
+      src={src}
+      alt={alt}
+    />
   );
 }

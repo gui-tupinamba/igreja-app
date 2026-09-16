@@ -47,8 +47,32 @@ final readonly class PostDirectory
             SELECT p.*, totals.total FROM (SELECT count(*) AS total FROM authorized) totals
             LEFT JOIN page_keys k ON TRUE LEFT JOIN posts p ON p.id = k.id
             ORDER BY ".($administrative ? 'k.created_at DESC, k.id DESC' : 'k.published_at DESC, k.id DESC'), $parameters, $types);
+        
+        $postRows = [];
+        $postIds = [];
+
+        foreach ($rows as $row) {
+            if ($row['id'] === null) {
+                continue;
+            }
+
+            $postRows[] = $row;
+            $postIds[] = (int) $row['id'];
+        }
+
+        $imagesByPost = $this->imagesForPosts($postIds);
+
         $items = [];
-        foreach ($rows as $row) { if ($row['id'] !== null) { $items[] = PostView::data($row); } }
+
+        foreach ($postRows as $row) {
+            $postId = (int) $row['id'];
+
+            $items[] = PostView::data(
+                $row,
+                $imagesByPost[$postId] ?? [],
+            );
+        }
+
         return ['items' => $items, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => (int) $rows[0]['total']]];
     }
 
@@ -57,11 +81,68 @@ final readonly class PostDirectory
         if ($administrative) { $this->requireManager($actorId); }
         $scope = $administrative ? self::MANAGE_SCOPE : ContentReadScope::predicate('posts', 'p');
         $row = $this->db->fetchAssociative("SELECT p.* FROM posts p WHERE p.id = :id AND ($scope)", ['id' => $id, 'actor_id' => $actorId]);
-        return $row === false ? null : PostView::data($row);
+
+        if ($row === false) {
+            return null;
+        }
+
+        $postId = (int) $row['id'];
+        $imagesByPost = $this->imagesForPosts([$postId]);
+
+        return PostView::data(
+            $row,
+            $imagesByPost[$postId] ?? [],
+        );
+    }
+
+    private function imagesForPosts(array $postIds): array
+    {
+        if ($postIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(
+            ', ',
+            array_fill(0, count($postIds), '?')
+        );
+
+        $rows = $this->db->fetchAllAssociative(
+            <<<SQL
+            SELECT
+                id,
+                post_id,
+                mime_type,
+                size,
+                position
+            FROM post_images
+            WHERE post_id IN ($placeholders)
+            ORDER BY post_id, position, id
+            SQL,
+            $postIds,
+        );
+
+        $images = [];
+
+        foreach ($rows as $row) {
+            $postId = (int) $row['post_id'];
+            $imageId = (int) $row['id'];
+
+            $images[$postId][] = [
+                'id' => $imageId,
+                'position' => (int) $row['position'],
+                'mime_type' => $row['mime_type'],
+                'size' => (int) $row['size'],
+                'url' => "/posts/{$postId}/images/{$imageId}",
+            ];
+        }
+
+        return $images;
     }
 
     private function requireManager(int $actorId): void
     {
         if ($this->db->fetchOne("SELECT 1 FROM users WHERE id = ? AND status = 'ACTIVE' AND role IN ('ADMIN','PASTOR','LEADER')", [$actorId]) === false) { throw new AccessDeniedHttpException(); }
     }
+
+
 }

@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY index.html tsconfig.json vite.config.ts ./
 COPY src ./src
+COPY public ./public
 ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build

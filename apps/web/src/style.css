@@ -924,13 +924,15 @@ a {
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
 }
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
     }
 }
+
 dialog {
-    width: min(700px, calc(100vw - 32px));
+    width: min(900px, calc(100vw - 32px));
     max-height: 90dvh;
     overflow: auto;
     border: 1px solid var(--border);
@@ -939,6 +941,7 @@ dialog {
     color: #21382f;
     box-shadow: 0 20px 90px #123e3530;
 }
+
 dialog::backdrop {
     background: #18372dc0;
     backdrop-filter: blur(3px);
@@ -1156,6 +1159,57 @@ td button {
     font-size: 0.76rem;
     padding: 7px 10px;
 }
+
+.post-card-image {
+    display: block;
+    width: calc(100% + 44px);
+    height: 220px;
+    object-fit: cover;
+
+    margin:
+        -22px
+        -22px
+        18px
+        -22px;
+
+    border-radius: 10px 10px 0 0;
+}
+
+.post-card-image-loading {
+    width: calc(100% + 44px);
+    height: 220px;
+    margin:
+        -22px
+        -22px
+        18px
+        -22px;
+
+    background: #edf1ee;
+    border-radius: 10px 10px 0 0;
+}
+
+.post-detail-image {
+    display: block;
+    width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+
+    background: #f1f4f2;
+    border-radius: 12px;
+
+    margin-bottom: 24px;
+}
+
+.post-detail-image-loading {
+    width: 100%;
+    height: 320px;
+
+    background: #edf1ee;
+    border-radius: 12px;
+
+    margin-bottom: 24px;
+}
+
 .profile-grid {
     display: grid;
     grid-template-columns: 1.35fr 1fr;
