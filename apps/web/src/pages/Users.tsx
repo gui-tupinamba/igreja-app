@@ -322,6 +322,7 @@ export function ProfilePage() {
                   await refresh();
                   refreshInfo();
                   setSaved("Perfil atualizado.");
+                  profile.reload();
                 }}
               >
                 <ProfileFields user={profile.data.user} />

@@ -2,6 +2,10 @@ framework:
     secret: '%env(APP_SECRET)%'
     handle_all_throwables: true
     http_method_override: false
+    # Origin ports are bound to loopback; cloudflared is the external entry point.
+    # Never expose these ports publicly while trusting the immediate proxy.
+    trusted_proxies: '127.0.0.1,REMOTE_ADDR'
+    trusted_headers: ['x-forwarded-proto']
     php_errors:
         log: true
     router:
@@ -10,9 +14,3 @@ framework:
 when@test:
     framework:
         test: true
-
-trusted_proxies:
-    X-Forwarded-For
-    X-Forwarded-Host
-    X-Forwarded-Proto
-    X-Forwarded-Port

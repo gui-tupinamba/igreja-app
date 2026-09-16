@@ -1,7 +1,10 @@
 import type { User } from "./types";
 
 export const API_URL = (
-  import.meta.env.VITE_API_URL || `https://api.guitupinamba.dev/api`
+  import.meta.env.VITE_API_URL ||
+  (["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+    ? `http://${window.location.hostname}:8080/api`
+    : "https://api.guitupinamba.dev/api")
 ).replace(/\/$/, "");
 export class ApiError extends Error {
   constructor(
