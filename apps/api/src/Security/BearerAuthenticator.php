@@ -42,29 +42,38 @@ final class BearerAuthenticator extends AbstractAuthenticator implements Authent
     //     return $route !== null && !in_array($route, self::PUBLIC_ROUTES, true);
     // }
 
-    public function supports(Request $request): ?bool
-{
-    // Não autenticar preflight CORS
-    if ($request->isMethod('OPTIONS')) {
-        return false;
+//     public function supports(Request $request): ?bool
+// {
+//     // Não autenticar preflight CORS
+//     if ($request->isMethod('OPTIONS')) {
+//         return false;
+//     }
+
+//     // Rotas públicas de autenticação
+//     $publicRoutes = [
+//         '/api/auth/login',
+//         '/api/auth/refresh',
+//     ];
+
+//     if (in_array($request->getPathInfo(), $publicRoutes, true)) {
+//         return false;
+//     }
+
+//     // Só tenta autenticar quando realmente existe Bearer Token
+//     $authorization = $request->headers->get('Authorization');
+
+//     return $authorization !== null
+//         && str_starts_with($authorization, 'Bearer ');
+// }
+
+        public function supports(Request $request): ?bool
+    {
+        $route = $request->attributes->get('_route');
+
+        return $route !== null
+            && !in_array($route, self::PUBLIC_ROUTES, true);
     }
 
-    // Rotas públicas de autenticação
-    $publicRoutes = [
-        '/api/auth/login',
-        '/api/auth/refresh',
-    ];
-
-    if (in_array($request->getPathInfo(), $publicRoutes, true)) {
-        return false;
-    }
-
-    // Só tenta autenticar quando realmente existe Bearer Token
-    $authorization = $request->headers->get('Authorization');
-
-    return $authorization !== null
-        && str_starts_with($authorization, 'Bearer ');
-}
 
     public function authenticate(Request $request): Passport
     {

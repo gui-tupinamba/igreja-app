@@ -20,12 +20,11 @@ security:
             entry_point: App\Security\BearerAuthenticator
 
     access_control:
-        - { path: ^/api/(health|ready)$, roles: PUBLIC_ACCESS, methods: [GET, HEAD] }
+    - { path: ^/api/(health|ready)$, roles: PUBLIC_ACCESS, methods: [GET, HEAD] }
 
-        - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/refresh$, roles: PUBLIC_ACCESS }
+    - { path: ^/api/auth/(mobile/)?(login|refresh|logout)$, roles: PUBLIC_ACCESS, methods: [POST] }
 
-        - { path: ^/api(?:/|$), roles: IS_AUTHENTICATED_FULLY }
+    - { path: ^/api(?:/|$), roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:
