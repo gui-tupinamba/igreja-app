@@ -318,7 +318,7 @@ export function ContentEditor({
   kind: Kind;
   item?: Content;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (published: boolean) => void;
 }) {
   const { ministries, permissions } = useSession();
   const config = configs[kind];
@@ -347,36 +347,66 @@ export function ContentEditor({
       onClose={onClose}
     >
       <Form
+        // onClose={onClose}
+        // afterSave={onSaved}
+        // onSave={async (f) => {
+        //   const ministry = text(f, "ministry_id");
+        //   const body = {
+        //     title: text(f, "title"),
+        //     ministry_id: ministry ? Number(ministry) : null,
+        //     visibility: text(f, "visibility"),
+        //     ...(kind === "posts"
+        //       ? {
+        //           content: text(f, "content"),
+        //           comments_enabled: f.get("comments_enabled") === "on",
+        //         }
+        //       : {
+        //           description: nullable(f, "description"),
+        //           starts_at: instant(text(f, "starts_at")),
+        //           ends_at: instant(text(f, "ends_at")),
+        //           ...(kind === "events"
+        //             ? {
+        //                 location: nullable(f, "location"),
+        //                 address: nullable(f, "address"),
+        //               }
+        //             : {}),
+        //         }),
+        //   };
+        //   await api(
+        //     `/${kind}${item ? `/${item.id}` : ""}`,
+        //     item ? "PATCH" : "POST",
+        //     body,
+        //   );
+        // }}
+
         onClose={onClose}
-        afterSave={onSaved}
+
+        submit={!item && kind === "posts" ? "Salvar e publicar" : "Salvar"}
+
+        secondarySubmit={
+          !item && kind === "posts" ? "Salvar rascunho" : undefined
+        }
+
+        onSecondarySave={
+          !item && kind === "posts"
+            ? async (f) => {
+                await saveContent(kind, item, f);
+              }
+            : undefined
+        }
+
         onSave={async (f) => {
-          const ministry = text(f, "ministry_id");
-          const body = {
-            title: text(f, "title"),
-            ministry_id: ministry ? Number(ministry) : null,
-            visibility: text(f, "visibility"),
-            ...(kind === "posts"
-              ? {
-                  content: text(f, "content"),
-                  comments_enabled: f.get("comments_enabled") === "on",
-                }
-              : {
-                  description: nullable(f, "description"),
-                  starts_at: instant(text(f, "starts_at")),
-                  ends_at: instant(text(f, "ends_at")),
-                  ...(kind === "events"
-                    ? {
-                        location: nullable(f, "location"),
-                        address: nullable(f, "address"),
-                      }
-                    : {}),
-                }),
-          };
-          await api(
-            `/${kind}${item ? `/${item.id}` : ""}`,
-            item ? "PATCH" : "POST",
-            body,
-          );
+          const result = await saveContent(kind, item, f);
+
+          if (!item && kind === "posts") {
+            const post = result[config.field];
+
+            await api(`/posts/${post.id}/publish`, "POST", {});
+          }
+        }}
+
+        afterSave={(action) => {
+          onSaved(!item && kind === "posts" && action === "primary");
         }}
       >
         <label>
@@ -793,5 +823,41 @@ function Comments({
         />
       )}
     </section>
+  );
+}
+
+async function saveContent(
+  kind: Kind,
+  item: Content | undefined,
+  f: FormData,
+) {
+  const ministry = text(f, "ministry_id");
+
+  const body = {
+    title: text(f, "title"),
+    ministry_id: ministry ? Number(ministry) : null,
+    visibility: text(f, "visibility"),
+    ...(kind === "posts"
+      ? {
+          content: text(f, "content"),
+          comments_enabled: f.get("comments_enabled") === "on",
+        }
+      : {
+          description: nullable(f, "description"),
+          starts_at: instant(text(f, "starts_at")),
+          ends_at: instant(text(f, "ends_at")),
+          ...(kind === "events"
+            ? {
+                location: nullable(f, "location"),
+                address: nullable(f, "address"),
+              }
+            : {}),
+        }),
+  };
+
+  return api<Record<string, Content>>(
+    `/${kind}${item ? `/${item.id}` : ""}`,
+    item ? "PATCH" : "POST",
+    body,
   );
 }

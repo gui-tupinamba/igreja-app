@@ -34,13 +34,16 @@ export const date = (value?: string | null) =>
         timeStyle: "short",
       })
     : "Sem data";
+
 export const localDate = (value?: string | null) => {
   if (!value) return "";
   const d = new Date(value);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 };
+
 export const instant = (value: string) =>
   value ? new Date(value).toISOString().replace(".000Z", "Z") : null;
+
 export const query = (values: Record<string, string | number | undefined>) => {
   const p = new URLSearchParams();
   Object.entries(values).forEach(([k, v]) => {
@@ -48,6 +51,7 @@ export const query = (values: Record<string, string | number | undefined>) => {
   });
   return p.toString();
 };
+
 export function useData<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>();
@@ -87,6 +91,7 @@ export function useData<T>(path: string | null) {
   }, [path, revision]);
   return { data, error, loading, reload };
 }
+
 export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null;
   return (
@@ -97,6 +102,7 @@ export function ErrorBox({ error }: { error: unknown }) {
     </div>
   );
 }
+
 export function Loading() {
   return (
     <div className="loading" role="status">
@@ -105,6 +111,7 @@ export function Loading() {
     </div>
   );
 }
+
 export function Empty({
   title = "Ainda não há registros",
   children,
@@ -120,6 +127,7 @@ export function Empty({
     </div>
   );
 }
+
 export function Badge({ value }: { value: string }) {
   return (
     <span className={`badge ${value.toLowerCase()}`}>
@@ -127,6 +135,7 @@ export function Badge({ value }: { value: string }) {
     </span>
   );
 }
+
 export function Pager({
   pagination,
   onPage,
@@ -159,6 +168,7 @@ export function Pager({
     </div>
   );
 }
+
 export function Modal({
   title,
   children,
@@ -194,32 +204,103 @@ export function Modal({
     </dialog>
   );
 }
+
+// export function Form({
+//   children,
+//   onSave,
+//   onClose,
+//   submit = "Salvar",
+//   afterSave,
+// }: {
+//   children: ReactNode;
+//   onSave: (data: FormData) => Promise<void>;
+//   onClose?: () => void;
+//   submit?: string;
+//   afterSave?: () => void;
+// }) {
+//   const [busy, setBusy] = useState(false);
+//   const [error, setError] = useState<unknown>();
+//   async function save(e: FormEvent<HTMLFormElement>) {
+//     e.preventDefault();
+//     const form = e.currentTarget;
+//     const data = new FormData(form);
+//     setBusy(true);
+//     setError(undefined);
+//     try {
+//       await onSave(data);
+//       if (afterSave) {
+//         form.reset();
+//         afterSave();
+//       }
+//     } catch (e) {
+//       setError(e);
+//     } finally {
+//       setBusy(false);
+//     }
+//   }
+//   return (
+//     <form onSubmit={save}>
+//       <fieldset disabled={busy}>{children}</fieldset>
+//       <ErrorBox error={error} />
+//       <div className="form-actions">
+//         {onClose && (
+//           <button type="button" onClick={onClose}>
+//             Cancelar
+//           </button>
+//         )}
+//         <button className="primary" disabled={busy}>
+//           {busy ? "Salvando…" : submit}
+//         </button>
+//       </div>
+//     </form>
+//   );
+// }
+
 export function Form({
   children,
   onSave,
+  onSecondarySave,
   onClose,
   submit = "Salvar",
+  secondarySubmit,
   afterSave,
 }: {
   children: ReactNode;
   onSave: (data: FormData) => Promise<void>;
+  onSecondarySave?: (data: FormData) => Promise<void>;
   onClose?: () => void;
   submit?: string;
-  afterSave?: () => void;
+  secondarySubmit?: string;
+  afterSave?: (action: "primary" | "secondary") => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
+
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     const form = e.currentTarget;
+    const submitter = (e.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null;
+
+    const action =
+      submitter?.dataset.submitKind === "secondary" ? "secondary" : "primary";
+
     const data = new FormData(form);
+
     setBusy(true);
     setError(undefined);
+
     try {
-      await onSave(data);
+      if (action === "secondary" && onSecondarySave) {
+        await onSecondarySave(data);
+      } else {
+        await onSave(data);
+      }
+
       if (afterSave) {
         form.reset();
-        afterSave();
+        afterSave(action);
       }
     } catch (e) {
       setError(e);
@@ -227,23 +308,39 @@ export function Form({
       setBusy(false);
     }
   }
+
   return (
     <form onSubmit={save}>
       <fieldset disabled={busy}>{children}</fieldset>
+
       <ErrorBox error={error} />
+
       <div className="form-actions">
         {onClose && (
           <button type="button" onClick={onClose}>
             Cancelar
           </button>
         )}
-        <button className="primary" disabled={busy}>
+
+        {onSecondarySave && secondarySubmit && (
+          <button type="submit" data-submit-kind="secondary" disabled={busy}>
+            {busy ? "Salvando…" : secondarySubmit}
+          </button>
+        )}
+
+        <button
+          type="submit"
+          className="primary"
+          data-submit-kind="primary"
+          disabled={busy}
+        >
           {busy ? "Salvando…" : submit}
         </button>
       </div>
     </form>
   );
 }
+
 export function Confirm({
   title,
   text,
@@ -269,6 +366,7 @@ export function Confirm({
     </Modal>
   );
 }
+
 export function Heading({
   title,
   subtitle,
@@ -289,6 +387,7 @@ export function Heading({
     </header>
   );
 }
+
 export function Choice({
   name,
   label,
@@ -315,6 +414,7 @@ export function Choice({
     </label>
   );
 }
+
 export const text = (f: FormData, key: string) => String(f.get(key) || "");
 export const nullable = (f: FormData, key: string) => text(f, key) || null;
 export async function all<T>(path: string): Promise<T[]> {
