@@ -1,0 +1,186 @@
+services:
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:80"
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-igreja}
+      POSTGRES_USER: ${POSTGRES_USER:-igreja_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute php scripts/setup.php primeiro}
+      APP_DATABASE_USER: ${APP_DATABASE_USER:-igreja_app}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Execute php scripts/setup.php primeiro}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/10-create-app-user.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro
+    networks:
+      - database
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment: &api-environment
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${APP_SECRET:?Execute php scripts/setup.php primeiro}
+      DATABASE_URL: "postgresql://${APP_DATABASE_USER:-igreja_app}:${APP_DATABASE_PASSWORD:?Execute php scripts/setup.php primeiro}@postgres:5432/${POSTGRES_DB:-igreja}?serverVersion=17&charset=utf8"
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public
+      JWT_ISSUER: ${JWT_ISSUER:-igreja-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-igreja-clients}
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://guitupinamba.dev,https://www.guitupinamba.dev}
+      AUTH_ALLOW_INSECURE_LOCAL: ${AUTH_ALLOW_INSECURE_LOCAL:-0}
+    secrets:
+      - jwt_private
+      - jwt_public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - application
+      - database
+    healthcheck:
+      test: [CMD, sh, /usr/local/bin/check-fpm]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  nginx:
+    image: nginx:1.30-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      php:
+        condition: service_healthy
+    networks:
+      - edge
+      - application
+    healthcheck:
+      test: [CMD, wget, --quiet, --spider, "http://127.0.0.1/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  postgres-test:
+    profiles: [tools]
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: igreja_test
+      POSTGRES_USER: ${POSTGRES_USER:-igreja_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute php scripts/setup.php primeiro}
+      APP_DATABASE_USER: ${APP_DATABASE_USER:-igreja_app}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Execute php scripts/setup.php primeiro}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - ./docker/postgres/10-create-app-user.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m
+    networks:
+      - test_database
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  api-test:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: test
+    environment:
+      <<: *api-environment
+      APP_ENV: test
+      APP_DEBUG: "0"
+      RUN_DATABASE_TESTS: "1"
+      JWT_PRIVATE_KEY_PATH: /var/www/api/var/test-keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /var/www/api/var/test-keys/public.pem
+      JWT_ISSUER: igreja-api-test
+      JWT_AUDIENCE: igreja-clients-test
+      AUTH_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,https://guitupinamba.dev,https://www.guitupinamba.dev
+      AUTH_ALLOW_INSECURE_LOCAL: "0"
+      DATABASE_URL: "postgresql://${APP_DATABASE_USER:-igreja_app}:${APP_DATABASE_PASSWORD:?Execute php scripts/setup.php primeiro}@postgres-test:5432/igreja_test?serverVersion=17&charset=utf8"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - test_database
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  jwt_private:
+    file: ./.secrets/jwt-private.pem
+  jwt_public:
+    file: ./.secrets/jwt-public.pem
+
+volumes:
+  postgres_data:
+
+networks:
+  edge:
+  application:
+    internal: true
+  database:
+    internal: true
+  test_database:
+    internal: true

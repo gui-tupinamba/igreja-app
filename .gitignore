@@ -1,0 +1,39 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+.secrets/
+
+# Dependencies, runtime files and builds
+apps/api/config/reference.php
+**/node_modules/
+**/vendor/
+**/var/
+**/dist/
+**/build/
+**/.expo/
+**/coverage/
+**/test-results/
+**/playwright-report/
+**/.phpunit.cache/
+**/.phpunit.result.cache
+**/.composer/
+**/.composer-cache/
+**/.composer-home/
+*.log
+*.tsbuildinfo
+.cache/
+.tmp/
+backups/
+*.dump
+*.sql.gz
+
+# Local tools and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini

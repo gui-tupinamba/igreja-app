@@ -1,0 +1,8 @@
+monolog:
+    handlers:
+        stderr:
+            type: stream
+            path: php://stderr
+            level: warning
+            formatter: monolog.formatter.json
+            channels: ['!event', '!doctrine', '!request']

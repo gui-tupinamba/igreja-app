@@ -1,0 +1,27 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Entity/'
+            - '../src/Enum/'
+            - '../src/Domain/Guard.php'
+            - '../src/Auth/AuthResult.php'
+
+    App\Health\ReadinessCheckInterface:
+        alias: App\Health\DatabaseReadinessCheck
+
+    App\Auth\AuthTransport:
+        arguments:
+            $allowedOrigins: '%env(csv:AUTH_ALLOWED_ORIGINS)%'
+            $allowInsecureLocal: '%env(bool:AUTH_ALLOW_INSECURE_LOCAL)%'
+
+when@test:
+    services:
+        App\Health\ReadinessCheckInterface:
+            alias: App\Health\DatabaseReadinessCheck
+            public: true

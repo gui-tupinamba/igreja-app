@@ -1,0 +1,18 @@
+framework:
+    secret: '%env(APP_SECRET)%'
+    handle_all_throwables: true
+    http_method_override: false
+    php_errors:
+        log: true
+    router:
+        utf8: true
+
+when@test:
+    framework:
+        test: true
+
+trusted_proxies:
+    X-Forwarded-For
+    X-Forwarded-Host
+    X-Forwarded-Proto
+    X-Forwarded-Port
