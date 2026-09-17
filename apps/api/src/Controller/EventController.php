@@ -51,7 +51,9 @@ final readonly class EventController
     public function adminDetail(string $id, Request $request): JsonResponse
     {
         $this->noQuery($request);
-        return $this->json(['event' => $this->directory->detail($this->actor->get()->userId, ApiInput::id($id), true) ?? throw new NotFoundHttpException()]);
+        return $this->json(
+            ['event' => $this->directory->detail($this->actor->get()->userId, 
+            ApiInput::id($id), true) ?? throw new NotFoundHttpException()]);
     }
 
     #[Route('/api/events', name: 'api_event_create', methods: ['POST'])]
@@ -59,28 +61,39 @@ final readonly class EventController
     {
         $this->noQuery($request);
         $event = EventView::data($this->events->create($this->actor->get(), ApiInput::jsonObject($request, EventInput::FIELDS, 524288)));
-        return new JsonResponse(['event' => $event], 201, ['Cache-Control' => 'no-store', 'Location' => '/api/admin/events/'.$event['id']]);
+        return new JsonResponse(
+            ['event' => $event], 201, 
+            ['Cache-Control' => 'no-store', 'Location' => '/api/admin/events/'.$event['id']]);
     }
 
     #[Route('/api/events/{id}', name: 'api_event_update', requirements: ['id' => '[0-9]+'], methods: ['PATCH'])]
     public function update(string $id, Request $request): JsonResponse
     {
         $this->noQuery($request);
-        return $this->json(['event' => EventView::data($this->events->update($this->actor->get(), ApiInput::id($id), ApiInput::jsonObject($request, EventInput::FIELDS, 524288)))]);
+        return $this->json(
+            ['event' => EventView::data($this->events->update($this->actor->get(), 
+            ApiInput::id($id), 
+            ApiInput::jsonObject($request, EventInput::FIELDS, 524288)))]);
     }
 
     #[Route('/api/events/{id}/publish', name: 'api_event_publish', requirements: ['id' => '[0-9]+'], methods: ['POST'])]
     public function publish(string $id, Request $request): JsonResponse
     {
         $this->emptyRequest($request);
-        return $this->json(['event' => EventView::data($this->events->transition($this->actor->get(), ApiInput::id($id), EventStatus::PUBLISHED))]);
+        return $this->json(
+            ['event' => EventView::data($this->events->transition($this->actor->get(), 
+            ApiInput::id($id), 
+            EventStatus::PUBLISHED))]);
     }
 
     #[Route('/api/events/{id}/unpublish', name: 'api_event_unpublish', requirements: ['id' => '[0-9]+'], methods: ['POST'])]
     public function unpublish(string $id, Request $request): JsonResponse
     {
         $this->emptyRequest($request);
-        return $this->json(['event' => EventView::data($this->events->transition($this->actor->get(), ApiInput::id($id), EventStatus::DRAFT))]);
+        return $this->json(
+            ['event' => EventView::data($this->events->transition($this->actor->get(), 
+            ApiInput::id($id), 
+            EventStatus::DRAFT))]);
     }
 
     #[Route('/api/events/{id}', name: 'api_event_archive', requirements: ['id' => '[0-9]+'], methods: ['DELETE'])]
@@ -95,7 +108,10 @@ final readonly class EventController
     public function cancel(string $id, Request $request): JsonResponse
     {
         $this->emptyRequest($request);
-        return $this->json(['event' => EventView::data($this->events->transition($this->actor->get(), ApiInput::id($id), EventStatus::CANCELLED))]);
+        return $this->json(
+            ['event' => EventView::data($this->events->transition($this->actor->get(), 
+            ApiInput::id($id), 
+            EventStatus::CANCELLED))]);
     }
 
     private function noQuery(Request $request): void

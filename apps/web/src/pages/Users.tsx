@@ -403,59 +403,59 @@ export function ProfilePage() {
   );
 }
 function ProfileFields({
-  user,
-  email = false,
-}: {
-  user?: User;
-  email?: boolean;
-}) {
-  return (
-    <>
-      <label>
-        Nome completo
-        <input
-          name="name"
-          defaultValue={user?.name || ""}
-          required
-          maxLength={120}
-          autoComplete="name"
-        />
-      </label>
-      {email && (
+    user,
+    email = false,
+  }: {
+    user?: User;
+    email?: boolean;
+  }) {
+    return (
+      <>
         <label>
-          E-mail
+          Nome completo
           <input
-            type="email"
-            name="email"
-            defaultValue={user?.email || ""}
+            name="name"
+            defaultValue={user?.name || ""}
             required
-            maxLength={180}
-            autoComplete="off"
+            maxLength={120}
+            autoComplete="name"
           />
         </label>
-      )}
-      <div className="form-grid">
-        <label>
-          Telefone
-          <input
-            name="phone"
-            defaultValue={user?.phone || ""}
-            maxLength={30}
-            autoComplete="tel"
-          />
-        </label>
-        <label>
-          Data de nascimento
-          <input
-            type="date"
-            name="birth_date"
-            defaultValue={user?.birth_date || ""}
-            max={new Date().toLocaleDateString("en-CA")}
-          />
-        </label>
-      </div>
-    </>
-  );
+        {email && (
+          <label>
+            E-mail
+            <input
+              type="email"
+              name="email"
+              defaultValue={user?.email || ""}
+              required
+              maxLength={180}
+              autoComplete="off"
+            />
+          </label>
+        )}
+        <div className="form-grid">
+          <label>
+            Telefone
+            <input
+              name="phone"
+              defaultValue={user?.phone || ""}
+              maxLength={30}
+              autoComplete="tel"
+            />
+          </label>
+          <label>
+            Data de nascimento
+            <input
+              type="date"
+              name="birth_date"
+              defaultValue={user?.birth_date || ""}
+              max={new Date().toLocaleDateString("en-CA")}
+            />
+          </label>
+        </div>
+      </>
+    );
 }
 function PasswordField({ name, label }: { name: string; label: string }) {
   return (

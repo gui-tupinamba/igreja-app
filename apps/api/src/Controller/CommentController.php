@@ -44,7 +44,10 @@ final readonly class CommentController
     {
         $this->noQuery($request);
         $row = CommentView::data($this->comments->create($this->actor->get(), ApiInput::id($postId), ApiInput::jsonObject($request, ['content'], 65536)));
-        return new JsonResponse(['comment' => $row], 201, ['Cache-Control' => 'no-store', 'Location' => '/api/posts/'.$row['post_id'].'/comments/'.$row['id']]);
+        return new JsonResponse(
+            ['comment' => $row], 201, 
+            ['Cache-Control' => 'no-store', 
+            'Location' => '/api/posts/'.$row['post_id'].'/comments/'.$row['id']]);
     }
 
     #[Route('/api/posts/{postId}/comments/{id}', name: 'api_comment_update', requirements: ['postId' => '[0-9]+', 'id' => '[0-9]+'], methods: ['PATCH'])]
@@ -68,7 +71,9 @@ final readonly class CommentController
     {
         $this->noQuery($request);
         $this->comments->moderate($this->actor->get(), ApiInput::id($postId), ApiInput::id($id), ApiInput::jsonObject($request, ['status']));
-        return new Response(status: 204, headers: ['Cache-Control' => 'no-store']);
+        return new Response(
+            status: 204, 
+            headers: ['Cache-Control' => 'no-store']);
     }
 
     private function noQuery(Request $request): void

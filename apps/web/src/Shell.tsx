@@ -49,6 +49,7 @@ export default function Shell({ user }: { user: User }) {
     </SessionProvider>
   );
 }
+
 function Layout() {
   const { user, permissions } = useSession();
   const [open, setOpen] = useState(false);
@@ -181,6 +182,7 @@ function Layout() {
     </div>
   );
 }
+
 function Dashboard() {
   const { user, ministries, permissions } = useSession();
   const news = useData<Page<Content>>("/posts?limit=3");

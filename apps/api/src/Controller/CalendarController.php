@@ -21,6 +21,11 @@ final readonly class CalendarController
     public function list(Request $request): JsonResponse
     {
         $query = ScheduleInput::query($request);
-        return new JsonResponse($this->directory->list($this->actor->get()->userId, $query['page'], $query['limit'], $query['filters']), headers: ['Cache-Control'=>'no-store']);
+        return new JsonResponse($this->directory->list(
+            $this->actor->get()->userId, 
+            $query['page'], 
+            $query['limit'], 
+            $query['filters']), 
+            headers: ['Cache-Control'=>'no-store']);
     }
 }

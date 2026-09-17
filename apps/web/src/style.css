@@ -759,12 +759,14 @@ a {
     margin: 0;
     line-height: 1.7;
 }
+
 .tabs {
     display: flex;
     gap: 5px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 22px;
 }
+
 .tabs button {
     border: 0;
     border-radius: 0;
@@ -774,10 +776,12 @@ a {
     color: #75867b;
     border-bottom: 2px solid transparent;
 }
+
 .tabs button.active {
     border-bottom-color: var(--green);
     color: var(--green);
 }
+
 .filters {
     display: flex;
     align-items: end;
@@ -785,23 +789,27 @@ a {
     flex-wrap: wrap;
     margin: 20px 0;
 }
+
 .filters label {
     font-size: 0.75rem;
     min-width: 145px;
     flex: 1;
     max-width: 300px;
 }
+
 .filters input,
 .filters select {
     padding: 10px 11px;
     font-size: 0.86rem;
 }
+
 .content-grid,
 .ministry-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 19px;
 }
+
 .content-card {
     background: #fff;
     border: 1px solid var(--border);
@@ -811,10 +819,12 @@ a {
     flex-direction: column;
     min-width: 0;
 }
+
 .ministry-tag {
     font-size: 0.72rem;
     color: #547460;
 }
+
 .card-title {
     border: 0;
     padding: 0;
@@ -826,16 +836,19 @@ a {
     color: #294b38;
     overflow-wrap: anywhere;
 }
+
 .card-title:hover {
     background: none !important;
     text-decoration: underline;
 }
+
 .card-title h2 {
     font-size: 1.2rem;
     line-height: 1.4;
     margin: 0;
     letter-spacing: -0.02em;
 }
+
 .excerpt {
     font-size: 0.88rem;
     line-height: 1.8;
@@ -843,6 +856,7 @@ a {
     white-space: pre-line;
     flex: 1;
 }
+
 .card-footer {
     display: flex;
     justify-content: space-between;
@@ -852,6 +866,7 @@ a {
     border-top: 1px solid #edf1ee;
     margin-top: 6px;
 }
+
 .card-footer > span {
     display: flex;
     gap: 6px;
@@ -859,6 +874,7 @@ a {
     font-size: 0.72rem;
     color: #849088;
 }
+
 .link-button {
     border: 0;
     background: none;
@@ -867,10 +883,12 @@ a {
     font-weight: 600;
     border-radius: 0;
 }
+
 .link-button:hover {
     background: none !important;
     text-decoration: underline;
 }
+
 .pager {
     display: flex;
     align-items: center;
@@ -880,18 +898,22 @@ a {
     font-size: 0.77rem;
     margin: 22px 0;
 }
+
 .pager > div {
     display: flex;
     gap: 6px;
 }
+
 .pager button {
     padding: 7px;
 }
+
 .event-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
 }
+
 .time-line {
     display: flex;
     align-items: center;
