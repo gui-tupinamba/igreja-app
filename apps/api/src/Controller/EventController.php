@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Administration\EventImageService;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use App\Administration\EventManagementService;
 use App\Enum\EventStatus;
 use App\Http\ApiInput;
@@ -22,8 +26,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class EventController
 {
-    public function __construct(private CurrentActor $actor, private EventDirectory $directory, private EventManagementService $events)
-    {
+    public function __construct(
+        private CurrentActor $actor,
+        private EventDirectory $directory,
+        private EventManagementService $events,
+        private EventImageService $images,
+    ) {
     }
 
     #[Route('/api/events', name: 'api_events_list', methods: ['GET'])]
@@ -112,6 +120,107 @@ final readonly class EventController
             ['event' => EventView::data($this->events->transition($this->actor->get(), 
             ApiInput::id($id), 
             EventStatus::CANCELLED))]);
+    }
+
+    #[Route(
+        '/api/events/{id}/images',
+        name: 'api_event_image_upload',
+        requirements: ['id' => '[0-9]+'],
+        methods: ['POST']
+    )]
+    public function uploadImage(
+        string $id,
+        Request $request,
+    ): JsonResponse {
+        $this->noQuery($request);
+
+        $file = $request->files->get('file');
+
+        if (!$file instanceof UploadedFile) {
+            throw new UnprocessableEntityHttpException(
+                'Envie uma imagem no campo "file".'
+            );
+        }
+
+        $image = $this->images->upload(
+            $this->actor->get(),
+            ApiInput::id($id),
+            $file,
+        );
+
+        return new JsonResponse(
+            ['image' => $image],
+            Response::HTTP_CREATED,
+            [
+                'Cache-Control' => 'no-store',
+            ],
+        );
+    }
+
+    #[Route(
+        '/api/events/{eventId}/images/{imageId}',
+        name: 'api_event_image',
+        requirements: [
+            'eventId' => '[0-9]+',
+            'imageId' => '[0-9]+',
+        ],
+        defaults: [
+            'variant' => 'full',
+        ],
+        methods: ['GET']
+    )]
+    #[Route(
+        '/api/events/{eventId}/images/{imageId}/{variant}',
+        name: 'api_event_image_variant',
+        requirements: [
+            'eventId' => '[0-9]+',
+            'imageId' => '[0-9]+',
+            'variant' => 'full|detail|feed',
+        ],
+        methods: ['GET']
+    )]
+    public function image(
+        string $eventId,
+        string $imageId,
+        string $variant,
+        Request $request,
+    ): BinaryFileResponse {
+        $this->noQuery($request);
+
+        $image = $this->images->getForRead(
+            $this->actor->get(),
+            ApiInput::id($eventId),
+            ApiInput::id($imageId),
+            $variant,
+        );
+
+        $response = new BinaryFileResponse(
+            $image['path']
+        );
+
+        $response->headers->set(
+            'Content-Type',
+            $image['mime_type'],
+        );
+
+        $response->headers->set(
+            'Cache-Control',
+            'private, no-cache, must-revalidate',
+        );
+
+        $response->setAutoEtag();
+        $response->setAutoLastModified();
+
+        $response->setContentDisposition(
+            ResponseHeaderBag::DISPOSITION_INLINE,
+            $image['original_name'],
+        );
+
+        $response->isNotModified(
+            $request
+        );
+
+        return $response;
     }
 
     private function noQuery(Request $request): void

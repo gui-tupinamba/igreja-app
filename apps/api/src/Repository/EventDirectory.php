@@ -55,17 +55,142 @@ final readonly class EventDirectory
             SELECT p.*, totals.total FROM (SELECT count(*) AS total FROM authorized) totals
             LEFT JOIN page_keys k ON TRUE LEFT JOIN events p ON p.id = k.id
             ORDER BY ".($administrative ? 'k.created_at DESC, k.id DESC' : 'k.starts_at ASC, k.id ASC'), $parameters, $types);
+        $eventRows = [];
+        $eventIds = [];
+
+        foreach ($rows as $row) {
+            if ($row['id'] === null) {
+                continue;
+            }
+
+            $eventRows[] = $row;
+            $eventIds[] = (int) $row['id'];
+        }
+
+        $imagesByEvent =
+            $this->imagesForEvents($eventIds);
+
         $items = [];
-        foreach ($rows as $row) { if ($row['id'] !== null) { $items[] = EventView::data($row); } }
+
+        foreach ($eventRows as $row) {
+            $eventId = (int) $row['id'];
+
+            $items[] = EventView::data(
+                $row,
+                $imagesByEvent[$eventId] ?? [],
+            );
+        }
+
         return ['items' => $items, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => (int) $rows[0]['total']]];
-    }
+            }
 
     public function detail(int $actorId, int $id, bool $administrative = false): ?array
     {
         if ($administrative) { $this->requireManager($actorId); }
         $scope = $administrative ? self::MANAGE_SCOPE : ContentReadScope::predicate('events', 'p');
-        $row = $this->db->fetchAssociative("SELECT p.* FROM events p WHERE p.id = :id AND ($scope)", ['id' => $id, 'actor_id' => $actorId]);
-        return $row === false ? null : EventView::data($row);
+
+        $row = $this->db->fetchAssociative(
+            "SELECT p.*
+            FROM events p
+            WHERE p.id = :id
+            AND ($scope)",
+            [
+                'id' => $id,
+                'actor_id' => $actorId,
+            ],
+        );
+
+        if ($row === false) {
+            return null;
+        }
+
+        $eventId = (int) $row['id'];
+
+        $imagesByEvent =
+            $this->imagesForEvents([
+                $eventId,
+            ]);
+
+        return EventView::data(
+            $row,
+            $imagesByEvent[$eventId] ?? [],
+        );
+    }
+
+    private function imagesForEvents(
+        array $eventIds,
+    ): array {
+        if ($eventIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(
+            ', ',
+            array_fill(
+                0,
+                count($eventIds),
+                '?',
+            )
+        );
+
+        $rows = $this->db->fetchAllAssociative(
+            <<<SQL
+            SELECT
+                id,
+                event_id,
+                mime_type,
+                size,
+                position
+            FROM event_images
+            WHERE event_id IN ($placeholders)
+            ORDER BY
+                event_id,
+                position,
+                id
+            SQL,
+            $eventIds,
+        );
+
+        $images = [];
+
+        foreach ($rows as $row) {
+            $eventId =
+                (int) $row['event_id'];
+
+            $imageId =
+                (int) $row['id'];
+
+            $baseUrl =
+                "/events/{$eventId}/images/{$imageId}";
+
+            $images[$eventId][] = [
+                'id' =>
+                    $imageId,
+
+                'position' =>
+                    (int) $row['position'],
+
+                'mime_type' =>
+                    $row['mime_type'],
+
+                'size' =>
+                    (int) $row['size'],
+
+                'url' =>
+                    $baseUrl,
+
+                'full_url' =>
+                    $baseUrl.'/full',
+
+                'detail_url' =>
+                    $baseUrl.'/detail',
+
+                'feed_url' =>
+                    $baseUrl.'/feed',
+            ];
+        }
+
+        return $images;
     }
 
     private function requireManager(int $actorId): void

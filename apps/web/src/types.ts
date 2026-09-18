@@ -31,7 +31,12 @@ export interface ContentImage {
   position: number;
   mime_type: string;
   size: number;
+
   url: string;
+
+  full_url?: string;
+  detail_url?: string;
+  feed_url?: string;
 }
 
 export interface Content {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ContentImagePicker } from "../ContentImagePicker";
 import { useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -214,11 +215,14 @@ export function ContentPage({ kind }: { kind: Kind }) {
         <div className={kind === "posts" ? "content-grid" : "event-list"}>
           {list.data.items.map((item) => (
             <article className="content-card" key={item.id}>
-              {kind === "posts" && (
+
+              {(kind === "posts" || kind === "events") && (
                 <ProtectedPostImage 
-                image={item.images?.[0]} 
-                alt={item.title} />
+                  image={item.images?.[0]} 
+                  alt={item.title} 
+                />
               )}
+
               <div className="row-meta">
                 <span className="ministry-tag">
                   {item.ministry_id
@@ -228,7 +232,6 @@ export function ContentPage({ kind }: { kind: Kind }) {
                 </span>
                 <Badge value={item.status} />
               </div>
-
 
               <button
                 className="card-title"
@@ -329,6 +332,9 @@ export function ContentEditor({
 }) {
   const { ministries, permissions } = useSession();
   const config = configs[kind];
+  
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+
   let destinations = permissions.manage_ministries
     ? ministries
     : ministries.filter((m) =>
@@ -397,13 +403,13 @@ export function ContentEditor({
         onSecondarySave={
           !item && kind === "posts"
             ? async (f) => {
-                await saveContentWithImages(kind, item, f);
+                await saveContentWithImages(kind, item, f, imageFiles);
               }
             : undefined
         }
 
         onSave={async (f) => {
-          const result = await saveContentWithImages(kind, item, f);
+          const result = await saveContentWithImages(kind, item, f, imageFiles);
 
           if (!item && kind === "posts") {
             const post = result[config.field];
@@ -455,20 +461,18 @@ export function ContentEditor({
             defaultValue={item?.content || item?.description || ""}
           />
         </label>
-        {kind === "posts" && !item && (
-          <label>
-            Imagens (opcional)
-            <input
-              type="file"
-              name="images"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-            />
-            <span className="hint">
-              Até 5 imagens. JPEG, PNG ou WebP. Máximo de 5 MB por imagem.
-            </span>
-          </label>
+
+        {(kind === "posts" || kind === "events") && !item && (
+          <div className="content-images-field">
+            <div className="content-images-title">
+              <strong>Imagens</strong>
+              <span>Opcional</span>
+            </div>
+
+            <ContentImagePicker value={imageFiles} onChange={setImageFiles} />
+          </div>
         )}
+
         {kind === "posts" ? (
           <label className="checkbox">
             <input
@@ -527,6 +531,7 @@ export function ContentEditor({
             )}
           </>
         )}
+
         {!item && (
           <p className="hint">
             Será salvo como rascunho. Publique quando estiver pronto.
@@ -566,13 +571,14 @@ function ContentDetail({
       ) : (
         item && (
           <>
-            {kind === "posts" && (
+            {(kind === "posts" || kind === "events") && (
               <ProtectedPostImage
                 image={item.images?.[0]}
                 alt={item.title}
                 variant="detail"
               />
             )}
+
             <div className="detail-meta">
               <Badge value={item.status} />
               <Badge value={item.visibility} />
@@ -663,6 +669,7 @@ function ContentDetail({
     </Modal>
   );
 }
+
 function Comments({
   post,
   administrative,
@@ -855,13 +862,13 @@ function Comments({
   );
 }
 
-function getPostImages(f: FormData): File[] {
+function getContentImages(f: FormData): File[] {
   return f
     .getAll("images")
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
-function validatePostImages(files: File[]) {
+function validateContentImages(files: File[]) {
   if (files.length > 5) {
     throw new ApiError(422, "Selecione no máximo 5 imagens.");
   }
@@ -879,13 +886,17 @@ function validatePostImages(files: File[]) {
   }
 }
 
-async function uploadPostImages(postId: number, files: File[]) {
+async function uploadContentImages(
+  kind: "posts" | "events",
+  contentId: number,
+  files: File[],
+) {
   for (const file of files) {
     const body = new FormData();
 
     body.append("file", file);
 
-    await apiForm(`/posts/${postId}/images`, body);
+    await apiForm(`/${kind}/${contentId}/images`, body);
   }
 }
 
@@ -893,17 +904,20 @@ async function saveContentWithImages(
   kind: Kind,
   item: Content | undefined,
   f: FormData,
+  imageFiles: File[],
 ) {
-  const files = kind === "posts" && !item ? getPostImages(f) : [];
+  const supportsImages = (kind === "posts" || kind === "events") && !item;
 
-  validatePostImages(files);
+  const files = supportsImages ? imageFiles : [];
+
+  validateContentImages(files);
 
   const result = await saveContent(kind, item, f);
 
-  if (kind === "posts" && !item && files.length) {
-    const post = result.post;
+  if (supportsImages && files.length > 0) {
+    const content = kind === "posts" ? result.post : result.event;
 
-    await uploadPostImages(post.id, files);
+    await uploadContentImages(kind, content.id, files);
   }
 
   return result;
@@ -961,11 +975,19 @@ function ProtectedPostImage({
     let active = true;
     let objectUrl: string | null = null;
 
-    apiBlob(image.url)
+    const imageUrl =
+      variant === "detail"
+        ? image.detail_url || image.url
+        : image.feed_url || image.url;
+
+    apiBlob(imageUrl)
       .then((blob) => {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         objectUrl = URL.createObjectURL(blob);
+
         setSrc(objectUrl);
       })
       .catch((error) => {
@@ -983,7 +1005,7 @@ function ProtectedPostImage({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [image]);
+  }, [image, variant]);
 
   if (!src) {
     return (

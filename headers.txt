@@ -1,12 +1,12 @@
 HTTP/1.1 200 OK
-Date: Wed, 16 Sep 2026 16:23:18 GMT
+Date: Fri, 18 Sep 2026 14:43:02 GMT
 Content-Type: image/jpeg
 Content-Length: 108321
 Connection: keep-alive
 Accept-Ranges: bytes
-Cache-Control: no-store, private
-Cache-Control: no-store, private
+Cache-Control: private, no-cache, must-revalidate
 content-disposition: inline; filename=logo-quadrangular.jpg
+etag: "OG46Mx+J6NADigt/mn/MqA=="
 last-modified: Wed, 16 Sep 2026 16:11:49 GMT
 referrer-policy: no-referrer
 Server: cloudflare
@@ -14,8 +14,8 @@ vary: Origin
 x-content-type-options: nosniff
 x-frame-options: DENY
 cf-cache-status: DYNAMIC
-Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=tZ8sgHuftlavPjrwEbtRJsuhXfPCNv7aYIElY26rEHVf1daAsqbWzfpbkYPdJzpSBbzv36YsOeO1nhEw8RE8L%2Fggpwy106QFHh1xmK39iWGFdbnSvIibfAobhEM1C2%2B7VDe6aO%2BBqA%3D%3D"}]}
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=eCHr%2BRXlhO5VwP%2B4qRi%2BEOYBbn%2FXoePmmCF5XqtRCiG7HA8v%2Fv5ixdqfPklr6XJOJOuSQI3%2BMTWoy%2B9YsU3Mr70gHR%2BldFi07y9LdUAQadqLfSHyso8Uvvf73QjGlHp2dXk31jcP5Q%3D%3D"}]}
 Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
-CF-RAY: a3c137012a1500fd-GRU
+CF-RAY: a3d11ee34dd0f2a3-MIA
 alt-svc: h3=":443"; ma=86400
 

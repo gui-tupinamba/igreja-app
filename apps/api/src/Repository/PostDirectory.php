@@ -97,6 +97,8 @@ final readonly class PostDirectory
 
     private function imagesForPosts(array $postIds): array
     {
+        
+
         if ($postIds === []) {
             return [];
         }
@@ -126,13 +128,19 @@ final readonly class PostDirectory
         foreach ($rows as $row) {
             $postId = (int) $row['post_id'];
             $imageId = (int) $row['id'];
-
+            $baseUrl ="/posts/{$postId}/images/{$imageId}";
             $images[$postId][] = [
                 'id' => $imageId,
-                'position' => (int) $row['position'],
-                'mime_type' => $row['mime_type'],
-                'size' => (int) $row['size'],
-                'url' => "/posts/{$postId}/images/{$imageId}",
+                'position' =>(int) $row['position'],
+                'mime_type' =>$row['mime_type'],
+                'size' =>(int) $row['size'],
+                /*
+                * Mantemos url por compatibilidade.
+                */
+                'url' =>$baseUrl,
+                'full_url' =>$baseUrl.'/full',
+                'detail_url' =>$baseUrl.'/detail',
+                'feed_url' =>$baseUrl.'/feed',
             ];
         }
 

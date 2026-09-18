@@ -146,45 +146,66 @@ final readonly class PostController
         );
     }
 
-    #[Route(
+#[Route(
     '/api/posts/{postId}/images/{imageId}',
     name: 'api_post_image',
     requirements: [
         'postId' => '[0-9]+',
         'imageId' => '[0-9]+',
     ],
+    defaults: [
+        'variant' => 'full',
+    ],
+    methods: ['GET']
+)]
+#[Route(
+    '/api/posts/{postId}/images/{imageId}/{variant}',
+    name: 'api_post_image_variant',
+    requirements: [
+        'postId' => '[0-9]+',
+        'imageId' => '[0-9]+',
+        'variant' => 'full|detail|feed',
+    ],
     methods: ['GET']
 )]
 public function image(
     string $postId,
     string $imageId,
+    string $variant,
     Request $request,
 ): BinaryFileResponse {
-    $this->noQuery($request);
+        $this->noQuery($request);
 
-    $image = $this->images->getForRead(
-        $this->actor->get(),
-        ApiInput::id($postId),
-        ApiInput::id($imageId),
-    );
+        $image = $this->images->getForRead(
+            $this->actor->get(),
+            ApiInput::id($postId),
+            ApiInput::id($imageId),
+            $variant,
+        );
 
-    $response = new BinaryFileResponse($image['path']);
+        $response = new BinaryFileResponse($image['path']);
 
-    $response->headers->set(
-        'Content-Type',
-        $image['mime_type']
-    );
+        $response->headers->set(
+            'Content-Type',
+            $image['mime_type']
+        );
 
-    $response->headers->set(
-        'Cache-Control',
-        'no-store, max-age=300'
-    );
+        $response->headers->set(
+            'Cache-Control',
+            'private, no-cache, must-revalidate'
+        );
 
-    $response->setContentDisposition(
-        ResponseHeaderBag::DISPOSITION_INLINE,
-        $image['original_name']
-    );
+        $response->setAutoEtag();
+        $response->setAutoLastModified();
 
-    return $response;
-}
+        
+        $response->setContentDisposition(
+            ResponseHeaderBag::DISPOSITION_INLINE,
+            $image['original_name']
+        );
+            
+        $response->isNotModified($request);
+        
+        return $response;
+    }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Administration;
 
+use App\Media\ImageProcessorService;
 use App\Security\AuthenticatedActor;
 use App\Security\Authorization\AccessPolicy;
 use Doctrine\DBAL\Connection;
@@ -14,17 +15,14 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 final readonly class PostImageService
 {
     private const MAX_IMAGES = 5;
-    private const MAX_SIZE = 5 * 1024 * 1024;
 
-    private const EXTENSIONS = [
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        'image/webp' => 'webp',
-    ];
+    private const DIRECTORY =
+        '/var/www/api/var/uploads/posts';
 
     public function __construct(
         private Connection $db,
         private AccessPolicy $policy,
+        private ImageProcessorService $processor,
     ) {
     }
 
@@ -33,52 +31,25 @@ final readonly class PostImageService
         int $postId,
         UploadedFile $file,
     ): array {
-        if (!$this->policy->canManagePost($actor->userId, $postId)) {
+        if (
+            !$this->policy->canManagePost(
+                $actor->userId,
+                $postId,
+            )
+        ) {
             throw new NotFoundHttpException();
         }
 
         $count = (int) $this->db->fetchOne(
-            'SELECT COUNT(*) FROM post_images WHERE post_id = ?',
+            'SELECT COUNT(*)
+            FROM post_images
+            WHERE post_id = ?',
             [$postId],
         );
 
         if ($count >= self::MAX_IMAGES) {
             throw new UnprocessableEntityHttpException(
                 'A publicação já possui o limite de 5 imagens.'
-            );
-        }
-
-        if (!$file->isValid()) {
-            throw new UnprocessableEntityHttpException(
-                'Não foi possível receber a imagem.'
-            );
-        }
-
-        $size = $file->getSize();
-
-        if ($size === false || $size <= 0 || $size > self::MAX_SIZE) {
-            throw new UnprocessableEntityHttpException(
-                'A imagem deve possuir no máximo 5 MB.'
-            );
-        }
-
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($file->getPathname());
-
-        if ($mimeType === false || !isset(self::EXTENSIONS[$mimeType])) {
-            throw new UnprocessableEntityHttpException(
-                'Formato inválido. Utilize JPEG, PNG ou WebP.'
-            );
-        }
-
-        $extension = self::EXTENSIONS[$mimeType];
-        $storageName = bin2hex(random_bytes(24)).'.'.$extension;
-
-        $directory = '/var/www/api/var/uploads/posts';
-
-        if (!is_dir($directory) && !mkdir($directory, 0770, true)) {
-            throw new \RuntimeException(
-                'Não foi possível preparar o diretório de imagens.'
             );
         }
 
@@ -89,35 +60,60 @@ final readonly class PostImageService
             [$postId],
         );
 
-        $originalName = $file->getClientOriginalName();
+        /*
+         * A partir daqui o arquivo original é:
+         *
+         * - validado;
+         * - corrigido por EXIF;
+         * - recortado;
+         * - convertido para WebP;
+         * - convertido em full/detail/feed.
+         */
+        $processed = $this->processor->process(
+            $file,
+            self::DIRECTORY,
+        );
 
-        $file->move($directory, $storageName);
+        $full = $processed['variants']['full'];
 
         try {
             $row = $this->db->fetchAssociative(
                 <<<'SQL'
                 INSERT INTO post_images
-                    (post_id, storage_name, original_name, mime_type, size, position, created_at)
+                    (
+                        post_id,
+                        storage_name,
+                        original_name,
+                        mime_type,
+                        size,
+                        position,
+                        created_at
+                    )
                 VALUES
                     (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 RETURNING *
                 SQL,
                 [
                     $postId,
-                    $storageName,
-                    $originalName,
-                    $mimeType,
-                    $size,
+                    $full['storage_name'],
+                    $processed['original_name'],
+                    $full['mime_type'],
+                    $full['size'],
                     $position,
                 ],
             );
-        } catch (\Throwable $e) {
-            @unlink($directory.'/'.$storageName);
-            throw $e;
+        } catch (\Throwable $exception) {
+            $this->removeProcessedFiles(
+                $processed
+            );
+
+            throw $exception;
         }
 
         if ($row === false) {
-            @unlink($directory.'/'.$storageName);
+            $this->removeProcessedFiles(
+                $processed
+            );
 
             throw new \RuntimeException(
                 'Não foi possível registrar a imagem.'
@@ -126,39 +122,145 @@ final readonly class PostImageService
 
         return [
             'id' => (int) $row['id'],
-            'post_id' => (int) $row['post_id'],
-            'mime_type' => $row['mime_type'],
-            'size' => (int) $row['size'],
-            'position' => (int) $row['position'],
+
+            'post_id' =>
+                (int) $row['post_id'],
+
+            'mime_type' =>
+                $row['mime_type'],
+
+            'size' =>
+                (int) $row['size'],
+
+            'position' =>
+                (int) $row['position'],
+
+            'width' =>
+                $full['width'],
+
+            'height' =>
+                $full['height'],
         ];
     }
 
-    public function getForRead(
+public function getForRead(
     AuthenticatedActor $actor,
     int $postId,
     int $imageId,
+    string $variant = 'full',
 ): array {
     if (
-        !$this->policy->canReadPost($actor->userId, $postId)
-        && !$this->policy->canManagePost($actor->userId, $postId)
+        !$this->policy->canReadPost(
+            $actor->userId,
+            $postId,
+        )
+        &&
+        !$this->policy->canManagePost(
+            $actor->userId,
+            $postId,
+        )
+    ) {
+        throw new NotFoundHttpException();
+    }
+
+    if (
+        !in_array(
+            $variant,
+            ['full', 'detail', 'feed'],
+            true,
+        )
     ) {
         throw new NotFoundHttpException();
     }
 
     $row = $this->db->fetchAssociative(
         <<<'SQL'
-        SELECT id, post_id, storage_name, original_name, mime_type, size, position
+        SELECT
+            id,
+            post_id,
+            storage_name,
+            original_name,
+            mime_type,
+            size,
+            position
         FROM post_images
-        WHERE id = ? AND post_id = ?
+        WHERE id = ?
+        AND post_id = ?
         SQL,
-        [$imageId, $postId],
+        [
+            $imageId,
+            $postId,
+        ],
     );
 
     if ($row === false) {
         throw new NotFoundHttpException();
     }
 
-    $path = '/var/www/api/var/uploads/posts/'.$row['storage_name'];
+    $storageName = $row['storage_name'];
+
+    /*
+     * Imagens novas:
+     *
+     * abc-full.webp
+     * abc-detail.webp
+     * abc-feed.webp
+     */
+    if (
+        preg_match(
+            '/-full\.webp$/D',
+            $storageName,
+        ) === 1
+    ) {
+        $variantName = preg_replace(
+            '/-full\.webp$/D',
+            '-'.$variant.'.webp',
+            $storageName,
+        );
+
+        if (!is_string($variantName)) {
+            throw new NotFoundHttpException();
+        }
+
+        $path =
+            self::DIRECTORY.
+            '/'.
+            $variantName;
+
+        if (!is_file($path)) {
+            throw new NotFoundHttpException();
+        }
+
+        $size = filesize($path);
+
+        if ($size === false) {
+            throw new NotFoundHttpException();
+        }
+
+        return [
+            'id' => (int) $row['id'],
+            'post_id' => (int) $row['post_id'],
+            'path' => $path,
+            'original_name' =>
+                $row['original_name'],
+            'mime_type' => 'image/webp',
+            'size' => $size,
+            'position' =>
+                (int) $row['position'],
+            'variant' => $variant,
+        ];
+    }
+
+    /*
+     * Compatibilidade com imagens antigas.
+     *
+     * Como elas não possuem variantes, qualquer
+     * pedido utiliza o arquivo original.
+     */
+    $path =
+        self::DIRECTORY.
+        '/'.
+        $storageName;
 
     if (!is_file($path)) {
         throw new NotFoundHttpException();
@@ -168,10 +270,33 @@ final readonly class PostImageService
         'id' => (int) $row['id'],
         'post_id' => (int) $row['post_id'],
         'path' => $path,
-        'original_name' => $row['original_name'],
-        'mime_type' => $row['mime_type'],
-        'size' => (int) $row['size'],
-        'position' => (int) $row['position'],
+        'original_name' =>
+            $row['original_name'],
+        'mime_type' =>
+            $row['mime_type'],
+        'size' =>
+            (int) $row['size'],
+        'position' =>
+            (int) $row['position'],
+        'variant' => 'original',
     ];
 }
+
+    private function removeProcessedFiles(
+        array $processed,
+    ): void {
+        foreach (
+            $processed['variants'] ?? []
+            as $variant
+        ) {
+            $path = $variant['path'] ?? null;
+
+            if (
+                is_string($path)
+                && is_file($path)
+            ) {
+                @unlink($path);
+            }
+        }
+    }
 }

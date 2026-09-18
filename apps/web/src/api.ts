@@ -19,17 +19,7 @@ let token: string | null = null;
 let generation = 0;
 let refreshing: Promise<User> | null = null;
 
-const imageCache = new Map<
-  string,
-  {
-    blob: Blob;
-    expiresAt: number;
-  }
->();
-
 const imageRequests = new Map<string, Promise<Blob>>();
-
-const IMAGE_CACHE_TIME = 5 * 60 * 1000;
 
 const listeners = new Set<(user: User | null) => void>();
 const channel =
@@ -47,7 +37,6 @@ export function clearSession(broadcast = false) {
   generation++;
   token = null;
 
-  imageCache.clear();
   imageRequests.clear();
   
   emit(null);
@@ -174,12 +163,6 @@ export async function api<T>(
 }
 
 export async function apiBlob(path: string): Promise<Blob> {
-  const cached = imageCache.get(path);
-
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.blob;
-  }
-
   const existingRequest = imageRequests.get(path);
 
   if (existingRequest) {
@@ -221,11 +204,6 @@ export async function apiBlob(path: string): Promise<Blob> {
 
       const blob = await response.blob();
 
-      imageCache.set(path, {
-        blob,
-        expiresAt: Date.now() + IMAGE_CACHE_TIME,
-      });
-
       return blob;
     } catch (error) {
       if (error instanceof ApiError) {
@@ -235,7 +213,9 @@ export async function apiBlob(path: string): Promise<Blob> {
       throw new ApiError(0, "Não foi possível carregar a imagem.");
     }
   })().finally(() => {
-    imageRequests.delete(path);
+    if (imageRequests.get(path) === request) {
+      imageRequests.delete(path);
+    }
   });
 
   imageRequests.set(path, request);
