@@ -71,8 +71,23 @@ final readonly class PostManagementService
             $post = $this->lockPost($id);
             $ministry = $post['ministry_id'] === null ? null : (int) $post['ministry_id'];
             $this->lockMinistries($actor->userId, [$ministry]);
-            $this->requireOrigin($actor->userId, $ministry);
-            if ($status === PostStatus::PUBLISHED) { $this->requireDestination($actor->userId, $ministry, true); }
+            $this->requireOrigin(
+                $actor->userId,
+                $ministry
+            );
+
+            if ($status === PostStatus::PUBLISHED) {
+                $this->requirePublisher(
+                    $actor->userId
+                );
+
+                $this->requireDestination(
+                    $actor->userId,
+                    $ministry,
+                    true
+                );
+            }
+
             if ($post['status'] !== $status->value) {
                 $changes = ['status' => $status->value, 'updated_at' => $now];
                 if ($status === PostStatus::PUBLISHED && $post['published_at'] === null) { $changes['published_at'] = $now; }
@@ -123,6 +138,31 @@ final readonly class PostManagementService
     {
         if (!$this->policy->canManageContent($actorId, $ministry)) { throw new AccessDeniedHttpException(); }
         if ($requireActive && $ministry !== null && $this->db->fetchOne('SELECT status FROM ministries WHERE id = ?', [$ministry]) !== 'ACTIVE') { throw new ConflictHttpException(); }
+    }
+
+    private function requirePublisher(
+        int $actorId,
+    ): void {
+        $actor = $this->policy->actor(
+            $actorId
+        );
+
+        if (
+            $actor === null
+            ||
+            $actor['status'] !== 'ACTIVE'
+            ||
+            !in_array(
+                $actor['role'],
+                [
+                    'ADMIN',
+                    'PASTOR',
+                ],
+                true,
+            )
+        ) {
+            throw new AccessDeniedHttpException();
+        }
     }
 
     private function audit(int $actorId, int $id, string $action, array $metadata, string $now): void

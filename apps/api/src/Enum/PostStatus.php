@@ -7,6 +7,7 @@ namespace App\Enum;
 enum PostStatus: string
 {
     case DRAFT = 'DRAFT';
+    case PENDING_REVIEW = 'PENDING_REVIEW';
     case PUBLISHED = 'PUBLISHED';
     case ARCHIVED = 'ARCHIVED';
 }

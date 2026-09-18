@@ -179,7 +179,13 @@ export function ContentPage({ kind }: { kind: Kind }) {
             >
               <option value="">Todos</option>
               {administrative && <option value="DRAFT">Rascunhos</option>}
+
+              {administrative && kind === "posts" && (
+                <option value="PENDING_REVIEW">Aguardando revisão</option>
+              )}
+
               <option value="PUBLISHED">Publicados</option>
+
               {kind !== "posts" && (
                 <option value="CANCELLED">Cancelados</option>
               )}
@@ -215,12 +221,8 @@ export function ContentPage({ kind }: { kind: Kind }) {
         <div className={kind === "posts" ? "content-grid" : "event-list"}>
           {list.data.items.map((item) => (
             <article className="content-card" key={item.id}>
-
               {(kind === "posts" || kind === "events") && (
-                <ProtectedPostImage 
-                  image={item.images?.[0]} 
-                  alt={item.title} 
-                />
+                <ProtectedPostImage image={item.images?.[0]} alt={item.title} />
               )}
 
               <div className="row-meta">
@@ -330,8 +332,12 @@ export function ContentEditor({
   onClose: () => void;
   onSaved: (published: boolean) => void;
 }) {
-  const { ministries, permissions } = useSession();
+  const { user, ministries, permissions } = useSession();
   const config = configs[kind];
+
+  const canPublishPost = user.role === "ADMIN" || user.role === "PASTOR";
+
+  const isNewPost = !item && kind === "posts";
   
   const [imageFiles, setImageFiles] = useState<File[]>([]);
 
@@ -394,14 +400,18 @@ export function ContentEditor({
 
         onClose={onClose}
 
-        submit={!item && kind === "posts" ? "Salvar e publicar" : "Salvar"}
-
-        secondarySubmit={
-          !item && kind === "posts" ? "Salvar rascunho" : undefined
+        submit={
+          isNewPost
+            ? canPublishPost
+              ? "Salvar e publicar"
+              : "Enviar para revisão"
+            : "Salvar"
         }
 
+        secondarySubmit={isNewPost ? "Salvar rascunho" : undefined}
+
         onSecondarySave={
-          !item && kind === "posts"
+          isNewPost
             ? async (f) => {
                 await saveContentWithImages(kind, item, f, imageFiles);
               }
@@ -411,10 +421,12 @@ export function ContentEditor({
         onSave={async (f) => {
           const result = await saveContentWithImages(kind, item, f, imageFiles);
 
-          if (!item && kind === "posts") {
-            const post = result[config.field];
+          if (isNewPost) {
+            const post = result.post;
 
-            await api(`/posts/${post.id}/publish`, "POST", {});
+            const action = canPublishPost ? "publish" : "submit-review";
+
+            await api(`/posts/${post.id}/${action}`, "POST", {});
           }
         }}
 
@@ -532,11 +544,14 @@ export function ContentEditor({
           </>
         )}
 
-        {!item && (
+        {!item && kind === "posts" && (
           <p className="hint">
-            Será salvo como rascunho. Publique quando estiver pronto.
+            {canPublishPost
+              ? "Você pode salvar como rascunho ou publicar imediatamente."
+              : "Ao enviar, a publicação ficará aguardando revisão de um Pastor ou Administrador."}
           </p>
         )}
+
       </Form>
     </Modal>
   );
@@ -556,7 +571,8 @@ function ContentDetail({
   onChange: () => void;
   onEdit: (item: Content) => void;
 }) {
-  const { canManage, ministries, permissions } = useSession();
+  const { user, canManage, ministries, permissions } = useSession();
+  const canPublishPost = user.role === "ADMIN" || user.role === "PASTOR";
   const config = configs[kind];
   const detail = useData<Record<string, Content>>(
     `${administrative ? "/admin" : ""}/${kind}/${id}`,
@@ -607,11 +623,31 @@ function ContentDetail({
                 <button onClick={() => onEdit(item)}>
                   <Pencil size={16} /> Editar
                 </button>
-                {item.status !== "PUBLISHED" && (
-                  <button onClick={() => setAction("publish")}>
-                    <Check size={16} /> Publicar
-                  </button>
-                )}
+
+                {item.status !== "PUBLISHED" &&
+                  item.status !== "ARCHIVED" &&
+                  (kind !== "posts" || canPublishPost) && (
+                    <button onClick={() => setAction("publish")}>
+                      <Check size={16} />
+                      Publicar
+                    </button>
+                  )}
+
+                {kind === "posts" &&
+                  user.role === "LEADER" &&
+                  item.status === "DRAFT" && (
+                    <button onClick={() => setAction("submit-review")}>
+                      <Check size={16} />
+                      Enviar para revisão
+                    </button>
+                  )}
+
+                {kind === "posts" &&
+                  user.role === "LEADER" &&
+                  item.status === "PENDING_REVIEW" && (
+                    <span className="review-status">Aguardando revisão</span>
+                  )}
+
                 {item.status === "PUBLISHED" && (
                   <button onClick={() => setAction("unpublish")}>
                     Retirar de publicação
@@ -642,6 +678,7 @@ function ContentDetail({
           title={
             {
               publish: "Publicar",
+              "submit-review": "Enviar para revisão",
               unpublish: "Retirar de publicação",
               cancel: "Cancelar encontro",
               archive: "Arquivar",
@@ -649,10 +686,12 @@ function ContentDetail({
           }
           text={
             action === "publish"
-              ? "O conteúdo ficará disponível para o público selecionado."
-              : action === "cancel"
-                ? "O encontro continuará visível com a indicação de cancelamento."
-                : "O registro ficará disponível apenas na gestão."
+              ? "A publicação ficará disponível para o público selecionado."
+              : action === "submit-review"
+                ? "A publicação será enviada para revisão de um Pastor ou Administrador."
+                : action === "cancel"
+                  ? "O encontro continuará visível com a indicação de cancelamento."
+                  : "O registro ficará disponível apenas na gestão."
           }
           onClose={() => setAction(null)}
           onConfirm={async () => {

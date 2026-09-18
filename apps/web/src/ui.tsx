@@ -19,6 +19,7 @@ export const labels: Record<string, string> = {
   INACTIVE: "Inativo",
   BLOCKED: "Bloqueado",
   DRAFT: "Rascunho",
+  PENDING_REVIEW: "Aguardando revisão",
   PUBLISHED: "Publicado",
   CANCELLED: "Cancelado",
   ARCHIVED: "Arquivado",
@@ -27,6 +28,7 @@ export const labels: Record<string, string> = {
   VISIBLE: "Visível",
   HIDDEN: "Oculto",
 };
+
 export const date = (value?: string | null) =>
   value
     ? new Date(value).toLocaleString("pt-BR", {

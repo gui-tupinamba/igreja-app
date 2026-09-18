@@ -84,6 +84,33 @@ final readonly class PostController
         return $this->json(['post' => PostView::data($this->posts->transition($this->actor->get(), ApiInput::id($id), PostStatus::PUBLISHED))]);
     }
 
+    #[Route(
+    '/api/posts/{id}/submit-review',
+    name: 'api_post_submit_review',
+    requirements: [
+        'id' => '[0-9]+',
+    ],
+    methods: ['POST']
+    )]
+    public function submitReview(
+        string $id,
+        Request $request,
+    ): JsonResponse {
+        $this->emptyRequest(
+            $request
+        );
+
+        return $this->json([
+            'post' => PostView::data(
+                $this->posts->transition(
+                    $this->actor->get(),
+                    ApiInput::id($id),
+                    PostStatus::PENDING_REVIEW,
+                )
+            ),
+        ]);
+    }
+
     #[Route('/api/posts/{id}/unpublish', name: 'api_post_unpublish', requirements: ['id' => '[0-9]+'], methods: ['POST'])]
     public function unpublish(string $id, Request $request): JsonResponse
     {
