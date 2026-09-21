@@ -35,7 +35,7 @@ foreach ([
     'JWT_PUBLIC_KEY_PATH' => $directory.'/public.pem',
     'JWT_ISSUER' => 'igreja-api-test',
     'JWT_AUDIENCE' => 'igreja-clients-test',
-    'AUTH_ALLOWED_ORIGINS'='http://localhost:5173,http://127.0.0.1:5173,https://www.guitupinamba.dev,https://guitupinamba.dev',
+    'AUTH_ALLOWED_ORIGINS' => 'http://localhost:5173,http://127.0.0.1:5173,https://www.guitupinamba.dev,https://guitupinamba.dev',
     'AUTH_ALLOW_INSECURE_LOCAL' => '0',
 ] as $name => $value) {
     $_ENV[$name] = $_SERVER[$name] = $value;

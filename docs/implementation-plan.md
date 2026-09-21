@@ -1,6 +1,9 @@
 # Plano incremental de implementação
 
-A execução atual implementou infraestrutura, banco, autenticação, autorização, usuários, ministérios e publicações. A próxima fase é comentários. As decisões em [architecture.md](architecture.md) guiam todas as fases; contratos em [authentication.md](authentication.md), [authorization.md](authorization.md), [users.md](users.md), [ministries.md](ministries.md) e [posts.md](posts.md); resultados executados em [validation.md](validation.md).
+A execução atual implementou as fases 2–13, incluindo API, Web, domínio externo e
+aplicativo mobile. A próxima fase é notificações. As decisões em
+[architecture.md](architecture.md) guiam todas as fases; resultados executados em
+[validation.md](validation.md).
 
 ## Estado atual
 
@@ -15,7 +18,11 @@ A execução atual implementou infraestrutura, banco, autenticação, autorizaç
 | 6 — Usuários e perfil | Implementada: cadastro, edição administrativa/própria, troca/redefinição de senha, auditoria e revogação. Sem nova migration; resultados em validation.md. |
 | 7 — Ministérios e vínculos | Implementada: cadastro/edição/desativação, leitura filtrada, participação e liderança com promoção explícita, auditoria transacional; sem migration. |
 | 8 — Publicações e feed | Implementada: posts de texto, estados explícitos, gestão por ministério, busca/filtros autorizados e auditoria; sem migration. |
-| 9–15 | Planejadas; Web na fase 12, mobile na fase 13 e exposição externa na fase 15. |
+| 9–11 — Conteúdo e agenda | Implementadas: comentários, eventos, atividades e agenda protegida. |
+| 12 — Web | Implementada e disponível em `https://guitupinamba.dev`. |
+| 13 — Mobile | Implementada em Expo/React Native; bundles Android/iOS validados. |
+| 14 — Notificações | Próxima fase. |
+| 15 — Exposição externa | Implementada com Cloudflare Tunnel e hosts Web/API separados. |
 
 Um arquivo ou comando documentado não é evidência de execução. Os resultados históricos das fases 2–4 e a suíte completa da fase 5 estão no registro de validação, que distingue testes em PostgreSQL isolado de implantação no banco local. As fases seguintes mantêm seus critérios próprios de aceite.
 
@@ -205,6 +212,11 @@ suíte completa com PostgreSQL isolado. Nenhuma migration ou dependência nova.
 A Web da fase 12 está implementada em `apps/web`, com serviço estático Docker,
 login e módulos conectados aos contratos reais. Sem migration nova.
 Execução/arquivos em [web.md](web.md); resultados em [validation.md](validation.md).
+
+**Estado:** implementada em 21/09/2026. O app em `apps/mobile` usa Expo SDK 57,
+Expo Router e TypeScript, consome a API externa HTTPS e mantém o refresh token no
+SecureStore. Typecheck, Expo Doctor e export dos bundles Android/iOS foram aprovados.
+Detalhes em [mobile.md](mobile.md).
 
 **Escopo:** Expo/React Native, Expo Router, TypeScript, Android e iOS; login, Home, feed, detalhe de publicação, eventos, ministérios, agenda e perfil. Navegação adequada ao uso mobile, distinta da Web administrativa.
 

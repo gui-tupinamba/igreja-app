@@ -1,4 +1,25 @@
-# Validação da API — fases 2 a 11
+# Validação do projeto — fases 2 a 13
+
+## Atualização de 21/09/2026
+
+- Fase 13 implementada em `apps/mobile`: login, restauração/rotação de sessão,
+  Home, feed, imagens protegidas, publicação e comentários, eventos, agenda,
+  ministérios e perfil. O refresh token usa Expo SecureStore; access token fica
+  apenas em memória.
+- `npm run typecheck`, Expo Doctor (21/21) e export dos bundles Android e iOS aprovados.
+- API: **445 testes / 3.490 assertions aprovados** em PostgreSQL isolado. A suíte
+  cobre aprovação de posts por líderes, privacidade/IDOR e revogação de acesso às
+  imagens de posts e eventos.
+- Web: build Vite aprovado e 9 fluxos Playwright executados contra a API isolada.
+- Migration `Version20260921120000` aplicada: normaliza posições existentes e cria
+  unicidade `(post_id, position)` para uploads concorrentes. Schema Doctrine sincronizado.
+- Produção local atualizada; `https://guitupinamba.dev/` e
+  `https://api.guitupinamba.dev/api/ready` respondem HTTP 200 pelo Cloudflare Tunnel.
+  Host desconhecido no Nginx responde 404.
+
+Comandos principais: `docker compose --profile tools run --rm api-test`,
+`npm run build`, `npm run test:e2e`, `npm run typecheck`, `npx expo-doctor` e
+`npm run export`.
 
 Atualização local: 14/09/2026 (America/Manaus). Fases 2–11 implementadas e verificadas em
 Docker. A API local atende em `http://127.0.0.1:8080`. O modelo agora contém onze

@@ -9,7 +9,12 @@ A fase 7 acrescenta gestão de ministérios, participação e liderança, sem no
 migration. `MinistryManagementService` aplica autorização e auditoria transacionais;
 `MinistryDirectory` filtra diretórios no SQL. Contrato em [ministries.md](ministries.md).
 
-Este documento registra as decisões e orienta as próximas fases. A entrega atual inclui infraestrutura Docker, sete entidades do domínio, três entidades de autenticação e `AuditLog`, totalizando onze entidades e três migrations. Autenticação, autorização, cadastro e perfis estão implementados, com administração de cargo/status e senha. Os demais módulos, Web e Mobile continuam nas próximas fases. O README e o registro de validação distinguem comportamento disponível, testes executados e implantação local. O contrato da fase 6 está em [users.md](users.md), sem nova migration.
+Este documento registra as decisões e orienta as próximas fases. A entrega atual
+inclui API Symfony/Doctrine/PostgreSQL, Web React/Vite, aplicativo Expo/React Native
+e acesso HTTPS por Cloudflare Tunnel. Autenticação, autorização, usuários,
+ministérios, publicações, comentários, eventos, atividades e agenda estão
+implementados. O README e o registro de validação distinguem comportamento
+disponível, testes executados e implantação local.
 
 ## 1. Contexto e limites
 

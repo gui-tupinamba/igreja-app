@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class PostManagementHttpTest extends WebTestCase
 {
@@ -140,7 +141,11 @@ final class PostManagementHttpTest extends WebTestCase
         $admin = $this->account('ADMIN'); $leader = $this->account('LEADER');
         $first = $this->ministry(); $second = $this->ministry(); $third = $this->ministry();
         $this->join($leader, $first, true); $this->join($leader, $second, true);
-        $id = $this->post($leader, ['ministry_id' => $first, 'visibility' => 'MINISTRY_MEMBERS'], true);
+        $id = $this->post($leader, ['ministry_id' => $first, 'visibility' => 'MINISTRY_MEMBERS']);
+        $this->request('POST', "/api/posts/$id/submit-review", $leader, []);
+        self::assertResponseIsSuccessful();
+        $this->request('POST', "/api/posts/$id/publish", $admin, []);
+        self::assertResponseIsSuccessful();
         $this->request('PATCH', "/api/posts/$id", $leader, ['ministry_id' => $third]);
         self::assertResponseStatusCodeSame(403);
         $this->request('PATCH', "/api/posts/$id", $leader, ['ministry_id' => null, 'visibility' => 'PUBLIC']);
@@ -152,6 +157,78 @@ final class PostManagementHttpTest extends WebTestCase
         $this->request('PATCH', "/api/posts/$id", $leader, ['ministry_id' => $first]);
         self::assertResponseStatusCodeSame(404);
         $this->request('GET', "/api/posts/$id", $leader);
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testLeaderSubmitsDraftForReviewAndOnlyGlobalManagerPublishesIt(): void
+    {
+        $admin = $this->account('ADMIN');
+        $leader = $this->account('LEADER');
+        $ministry = $this->ministry();
+        $this->join($leader, $ministry, true);
+        $id = $this->post($leader, ['ministry_id' => $ministry]);
+
+        $this->request('POST', "/api/posts/$id/publish", $leader, []);
+        self::assertResponseStatusCodeSame(403);
+        $this->request('POST', "/api/posts/$id/submit-review", $leader, []);
+        self::assertSame('PENDING_REVIEW', $this->body()['post']['status']);
+        $this->request('GET', '/api/posts', $leader);
+        self::assertSame(0, $this->body()['pagination']['total']);
+        $this->request('GET', '/api/admin/posts?status=PENDING_REVIEW', $admin);
+        self::assertSame([$id], array_column($this->body()['items'], 'id'));
+        $this->request('POST', "/api/posts/$id/publish", $admin, []);
+        self::assertSame('PUBLISHED', $this->body()['post']['status']);
+        $this->request('POST', "/api/posts/$id/submit-review", $leader, []);
+        self::assertResponseStatusCodeSame(409);
+        $this->request('POST', "/api/posts/$id/submit-review", $admin, []);
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    public function testProtectedImageUploadIsAuditedAndFollowsCurrentPostAccess(): void
+    {
+        $admin = $this->account('ADMIN');
+        $member = $this->account('MEMBER');
+        $outsider = $this->account('MEMBER');
+        $ministry = $this->ministry();
+        $this->join($member, $ministry);
+        $id = $this->post($admin, ['ministry_id' => $ministry, 'visibility' => 'MINISTRY_MEMBERS']);
+        $path = tempnam(sys_get_temp_dir(), 'post-image-');
+        self::assertNotFalse($path);
+        $source = imagecreatetruecolor(32, 16);
+        self::assertNotFalse($source);
+        imagefill($source, 0, 0, imagecolorallocate($source, 34, 91, 65));
+        imagepng($source, $path);
+        imagedestroy($source);
+        try {
+            $this->client->request('POST', "https://localhost/api/posts/$id/images", files: [
+                'file' => new UploadedFile($path, 'comunidade.png', 'image/png', null, true),
+            ], server: ['HTTP_AUTHORIZATION' => 'Bearer '.$admin['token']]);
+        } finally {
+            @unlink($path);
+        }
+        self::assertResponseStatusCodeSame(201);
+        $imageId = $this->body()['image']['id'];
+        self::assertSame(0, $this->body()['image']['position']);
+        self::assertSame(1, (int) $this->db->fetchOne(
+            "SELECT count(*) FROM audit_logs WHERE entity_type = 'posts' AND entity_id = ? AND action = 'post.image_uploaded'",
+            [$id],
+        ));
+        $this->request('GET', "/api/admin/posts/$id", $admin);
+        self::assertSame($imageId, $this->body()['post']['images'][0]['id']);
+        $this->request('POST', "/api/posts/$id/publish", $admin, []);
+
+        $this->request('GET', "/api/posts/$id/images/$imageId/feed", $member);
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'image/webp');
+        self::assertStringContainsString('private', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+        $this->request('GET', "/api/posts/$id/images/$imageId/feed", $outsider);
+        self::assertResponseStatusCodeSame(404);
+        $other = $this->post($admin);
+        $this->request('GET', "/api/posts/$other/images/$imageId/feed", $admin);
+        self::assertResponseStatusCodeSame(404);
+        $this->request('DELETE', "/api/ministries/$ministry/members/".$member['id'], $admin);
+        self::assertResponseStatusCodeSame(204);
+        $this->request('GET', "/api/posts/$id/images/$imageId/feed", $member);
         self::assertResponseStatusCodeSame(404);
     }
 
@@ -175,7 +252,11 @@ final class PostManagementHttpTest extends WebTestCase
     public function testMembershipRevocationImmediatelyRemovesReadAndWriteWithExistingJwt(): void
     {
         $admin = $this->account('ADMIN'); $leader = $this->account('LEADER'); $ministry = $this->ministry(); $this->join($leader, $ministry, true);
-        $id = $this->post($leader, ['ministry_id' => $ministry, 'visibility' => 'MINISTRY_MEMBERS'], true);
+        $id = $this->post($leader, ['ministry_id' => $ministry, 'visibility' => 'MINISTRY_MEMBERS']);
+        $this->request('POST', "/api/posts/$id/submit-review", $leader, []);
+        self::assertResponseIsSuccessful();
+        $this->request('POST', "/api/posts/$id/publish", $admin, []);
+        self::assertResponseIsSuccessful();
         $this->request('DELETE', "/api/ministries/$ministry/members/".$leader['id'], $admin);
         self::assertResponseStatusCodeSame(204);
         foreach ([['GET', "/api/posts/$id", null], ['GET', "/api/admin/posts/$id", null], ['PATCH', "/api/posts/$id", ['title' => 'Revoked']], ['POST', "/api/posts/$id/unpublish", []]] as [$method, $path, $data]) {

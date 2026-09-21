@@ -7,9 +7,11 @@ namespace App\Administration;
 use App\Media\ImageProcessorService;
 use App\Security\AuthenticatedActor;
 use App\Security\Authorization\AccessPolicy;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 final readonly class PostImageService
@@ -40,26 +42,6 @@ final readonly class PostImageService
             throw new NotFoundHttpException();
         }
 
-        $count = (int) $this->db->fetchOne(
-            'SELECT COUNT(*)
-            FROM post_images
-            WHERE post_id = ?',
-            [$postId],
-        );
-
-        if ($count >= self::MAX_IMAGES) {
-            throw new UnprocessableEntityHttpException(
-                'A publicação já possui o limite de 5 imagens.'
-            );
-        }
-
-        $position = (int) $this->db->fetchOne(
-            'SELECT COALESCE(MAX(position), -1) + 1
-            FROM post_images
-            WHERE post_id = ?',
-            [$postId],
-        );
-
         /*
          * A partir daqui o arquivo original é:
          *
@@ -77,31 +59,40 @@ final readonly class PostImageService
         $full = $processed['variants']['full'];
 
         try {
-            $row = $this->db->fetchAssociative(
-                <<<'SQL'
-                INSERT INTO post_images
-                    (
-                        post_id,
-                        storage_name,
-                        original_name,
-                        mime_type,
-                        size,
-                        position,
-                        created_at
-                    )
-                VALUES
-                    (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                RETURNING *
-                SQL,
-                [
-                    $postId,
-                    $full['storage_name'],
-                    $processed['original_name'],
-                    $full['mime_type'],
-                    $full['size'],
-                    $position,
-                ],
-            );
+            if ($this->db->isTransactionActive()) {
+                throw new \LogicException('Image uploads must own the outermost transaction.');
+            }
+            $row = $this->db->transactional(function () use ($actor, $postId, $processed, $full): array {
+                $now = $this->guardMutation($actor);
+                if ($this->db->fetchOne('SELECT id FROM posts WHERE id = ? FOR UPDATE', [$postId]) === false
+                    || !$this->policy->canManagePost($actor->userId, $postId)) {
+                    throw new NotFoundHttpException();
+                }
+                $count = (int) $this->db->fetchOne('SELECT COUNT(*) FROM post_images WHERE post_id = ?', [$postId]);
+                if ($count >= self::MAX_IMAGES) {
+                    throw new UnprocessableEntityHttpException('A publicação já possui o limite de 5 imagens.');
+                }
+                $position = (int) $this->db->fetchOne(
+                    'SELECT COALESCE(MAX(position), -1) + 1 FROM post_images WHERE post_id = ?',
+                    [$postId],
+                );
+                $created = $this->db->fetchAssociative(
+                    <<<'SQL'
+                    INSERT INTO post_images
+                        (post_id, storage_name, original_name, mime_type, size, position, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    RETURNING *
+                    SQL,
+                    [$postId, $full['storage_name'], $processed['original_name'], $full['mime_type'],
+                        $full['size'], $position, $now],
+                );
+                if ($created === false) {
+                    throw new \RuntimeException('Não foi possível registrar a imagem.');
+                }
+                $this->audit($actor->userId, $postId, (int) $created['id'], $position, $now);
+
+                return $created;
+            });
         } catch (\Throwable $exception) {
             $this->removeProcessedFiles(
                 $processed
@@ -298,5 +289,33 @@ public function getForRead(
                 @unlink($path);
             }
         }
+    }
+
+    private function guardMutation(AuthenticatedActor $actor): string
+    {
+        $this->db->executeQuery('SELECT pg_advisory_xact_lock(841920041)');
+        $user = $this->db->fetchAssociative('SELECT status FROM users WHERE id = ? FOR UPDATE', [$actor->userId]);
+        $session = $this->db->fetchAssociative(
+            'SELECT revoked_at, expires_at FROM auth_sessions WHERE id = ? AND user_id = ? FOR UPDATE',
+            [$actor->sessionId, $actor->userId],
+        );
+        $now = (string) $this->db->fetchOne("SELECT date_trunc('second', clock_timestamp())");
+        if ($user === false || $user['status'] !== 'ACTIVE' || $session === false
+            || $session['revoked_at'] !== null
+            || new DateTimeImmutable($session['expires_at']) <= new DateTimeImmutable($now)) {
+            throw new UnauthorizedHttpException('Bearer');
+        }
+
+        return $now;
+    }
+
+    private function audit(int $actorId, int $postId, int $imageId, int $position, string $now): void
+    {
+        $this->db->insert('audit_logs', [
+            'actor_id' => $actorId, 'entity_type' => 'posts', 'entity_id' => $postId,
+            'action' => 'post.image_uploaded',
+            'metadata' => json_encode(['image_id' => $imageId, 'position' => $position], JSON_THROW_ON_ERROR),
+            'request_id' => bin2hex(random_bytes(16)), 'created_at' => $now,
+        ]);
     }
 }

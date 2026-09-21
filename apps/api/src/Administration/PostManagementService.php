@@ -88,6 +88,13 @@ final readonly class PostManagementService
                 );
             }
 
+            if ($status === PostStatus::PENDING_REVIEW) {
+                $this->requireReviewSubmitter($actor->userId);
+                if (!in_array($post['status'], [PostStatus::DRAFT->value, PostStatus::PENDING_REVIEW->value], true)) {
+                    throw new ConflictHttpException();
+                }
+            }
+
             if ($post['status'] !== $status->value) {
                 $changes = ['status' => $status->value, 'updated_at' => $now];
                 if ($status === PostStatus::PUBLISHED && $post['published_at'] === null) { $changes['published_at'] = $now; }
@@ -161,6 +168,14 @@ final readonly class PostManagementService
                 true,
             )
         ) {
+            throw new AccessDeniedHttpException();
+        }
+    }
+
+    private function requireReviewSubmitter(int $actorId): void
+    {
+        $actor = $this->policy->actor($actorId);
+        if ($actor === null || $actor['status'] !== 'ACTIVE' || $actor['role'] !== 'LEADER') {
             throw new AccessDeniedHttpException();
         }
     }

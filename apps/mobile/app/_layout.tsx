@@ -1,0 +1,21 @@
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SessionProvider, useSession } from "@/session";
+import { colors } from "@/theme";
+
+function Routes() {
+  const { ready, user } = useSession();
+  if (!ready) return <View style={styles.loading}><ActivityIndicator size="large" color={colors.green} /></View>;
+  return <Stack screenOptions={{ headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.ink, headerShadowVisible: false }}>
+    <Stack.Protected guard={!!user}><Stack.Screen name="(app)" options={{ headerShown: false }} /></Stack.Protected>
+    <Stack.Protected guard={!user}><Stack.Screen name="sign-in" options={{ headerShown: false }} /></Stack.Protected>
+  </Stack>;
+}
+
+export default function RootLayout() {
+  return <SafeAreaProvider><SessionProvider><StatusBar style="dark" /><Routes /></SessionProvider></SafeAreaProvider>;
+}
+
+const styles = StyleSheet.create({ loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.cream } });

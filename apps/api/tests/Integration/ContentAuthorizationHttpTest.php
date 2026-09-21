@@ -72,7 +72,7 @@ final class ContentAuthorizationHttpTest extends WebTestCase
             self::assertResponseStatusCodeSame(200);
             self::assertSame($g[$key], $this->json()['post']['id']);
             self::assertResponseHeaderSame('Cache-Control', 'no-store, private');
-            self::assertEqualsCanonicalizing(['id', 'title', 'content', 'visibility', 'status', 'ministry_id', 'published_at', 'author_id', 'comments_enabled', 'created_at', 'updated_at'], array_keys($this->json()['post']));
+            self::assertEqualsCanonicalizing(['id', 'title', 'content', 'visibility', 'status', 'ministry_id', 'published_at', 'author_id', 'comments_enabled', 'images', 'created_at', 'updated_at'], array_keys($this->json()['post']));
         }
         $this->get('/api/posts/'.$g['private_other'], $token);
         self::assertResponseStatusCodeSame($global ? 200 : 404);

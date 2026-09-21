@@ -3,8 +3,9 @@
 Monorepo para gestão, comunicação e ministérios. Infraestrutura, modelo inicial
 do banco, autenticação e autorização estão implementados. A API já oferece leituras
 protegidas, cadastro, perfis, ministérios, participantes, líderes, publicações, comentários, eventos e agenda.
-A interface Web funcional está em **http://127.0.0.1:5173/**. Entre com o ADMIN
-criado anteriormente. Mobile e exposição externa seguem as próximas fases.
+A interface Web funcional está em **https://guitupinamba.dev/** e a API em
+**https://api.guitupinamba.dev/api**. Entre com o ADMIN criado anteriormente.
+O aplicativo mobile da fase 13 está disponível em `apps/mobile` para Android e iOS.
 
 ## Estado atual
 
@@ -68,7 +69,10 @@ Fase 12: Web React/TypeScript/Vite com login, painel, pessoas, ministérios,
 participação/liderança, publicações/comentários, eventos, atividades, agenda e perfil.
 Build estático servido pelo serviço Docker `web`, com navegação por permissões e
 dados reais da API. [Execução e arquivos](docs/web.md). Sem nova migration.
-Próxima fase: mobile.
+Fase 13: aplicativo Expo/React Native com login, restauração segura de sessão, Home,
+feed, detalhes e comentários, eventos, agenda, ministérios e perfil. Refresh token
+fica no SecureStore e o access token somente em memória. [Execução](docs/mobile.md).
+Próxima fase: notificações.
 
 Leia [a arquitetura e o modelo inicial](docs/architecture.md),
 [o plano com critérios de aceite](docs/implementation-plan.md) e
@@ -93,7 +97,7 @@ feed conforme [posts.md](docs/posts.md); os demais módulos seguem o plano.
 apps/
   api/                   Symfony, config, controllers, serviços e testes
   web/                   React + TypeScript + Vite, telas e testes de navegador
-  mobile/                reservado: React Native + Expo + Expo Router
+  mobile/                React Native + Expo + Expo Router para Android/iOS
 packages/
   api-client/            futuro cliente HTTP compartilhado
   types/                 futuros contratos públicos
@@ -357,17 +361,21 @@ papéis antes da restauração. Inclua arquivos enviados e configurações no pl
 
 ## Próximas fases
 
-Fases 2–8 implementadas: infraestrutura, entidades, autenticação, autorização, usuários,
-ministérios e publicações. A próxima etapa é a fase 9, com comentários.
+Fases 2–13 implementadas: infraestrutura, domínio, autenticação, autorização,
+usuários, ministérios, conteúdo, agenda, Web e aplicativo mobile. A próxima etapa
+é a fase 14, com notificações.
 A criação inicial é
 controlada por `docker compose exec php php bin/console app:admin:create`, com senha
 oculta e sem credenciais padrão. O primeiro ADMIN local foi criado pelo usuário.
 
 Os métodos de entidade protegem invariantes locais; serviços e Voters autorizam
 o ator. A API já permite consultar usuários e alterar cargo/status com as salvaguardas
-da fase 5. A interface administrativa ainda não foi construída.
+da fase 5. A interface administrativa Web está disponível no domínio principal.
 
-Web (fase 12) executável: [instruções](docs/web.md). Mobile (fase 13) permanece
-reservado. Cloudflare (fase 15) está somente no desenho: Named Tunnel,
-hosts `app` e `api`, HTTPS, proxies confiáveis e ausência de cache de conteúdo privado.
-Domínio/token não são necessários para o bootstrap local. Não há túnel ativo.
+Web (fase 12): [instruções](docs/web.md). Mobile (fase 13):
+[instruções](docs/mobile.md). A exposição externa está ativa por Cloudflare Tunnel
+nos hosts `guitupinamba.dev` e `api.guitupinamba.dev`, com HTTPS e origens restritas.
+
+API atualizada em 21/09/2026; **445 testes e 3.490 verificações** aprovados na suíte
+completa com PostgreSQL isolado. A migration mais recente é
+`Version20260921120000`.

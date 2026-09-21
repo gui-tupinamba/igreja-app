@@ -7,9 +7,11 @@ namespace App\Administration;
 use App\Media\ImageProcessorService;
 use App\Security\AuthenticatedActor;
 use App\Security\Authorization\AccessPolicy;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 final readonly class EventImageService
@@ -56,6 +58,9 @@ final readonly class EventImageService
         $full = $processed['variants']['full'];
 
         try {
+            if ($this->db->isTransactionActive()) {
+                throw new \LogicException('Image uploads must own the outermost transaction.');
+            }
             $row = $this->db->transactional(
                 function () use (
                     $actor,
@@ -63,6 +68,7 @@ final readonly class EventImageService
                     $processed,
                     $full,
                 ): array {
+                    $now = $this->guardMutation($actor);
                     /*
                      * Bloqueia o evento para impedir dois uploads
                      * simultâneos de escolherem a mesma posição.
@@ -124,7 +130,7 @@ final readonly class EventImageService
                                 created_at
                             )
                         VALUES
-                            (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            (?, ?, ?, ?, ?, ?, ?)
                         RETURNING *
                         SQL,
                         [
@@ -134,6 +140,7 @@ final readonly class EventImageService
                             $full['mime_type'],
                             $full['size'],
                             $position,
+                            $now,
                         ],
                     );
 
@@ -142,6 +149,8 @@ final readonly class EventImageService
                             'Não foi possível registrar a imagem do evento.'
                         );
                     }
+
+                    $this->audit($actor->userId, $eventId, (int) $row['id'], $position, $now);
 
                     return $row;
                 },
@@ -323,5 +332,33 @@ final readonly class EventImageService
                 @unlink($path);
             }
         }
+    }
+
+    private function guardMutation(AuthenticatedActor $actor): string
+    {
+        $this->db->executeQuery('SELECT pg_advisory_xact_lock(841920041)');
+        $user = $this->db->fetchAssociative('SELECT status FROM users WHERE id = ? FOR UPDATE', [$actor->userId]);
+        $session = $this->db->fetchAssociative(
+            'SELECT revoked_at, expires_at FROM auth_sessions WHERE id = ? AND user_id = ? FOR UPDATE',
+            [$actor->sessionId, $actor->userId],
+        );
+        $now = (string) $this->db->fetchOne("SELECT date_trunc('second', clock_timestamp())");
+        if ($user === false || $user['status'] !== 'ACTIVE' || $session === false
+            || $session['revoked_at'] !== null
+            || new DateTimeImmutable($session['expires_at']) <= new DateTimeImmutable($now)) {
+            throw new UnauthorizedHttpException('Bearer');
+        }
+
+        return $now;
+    }
+
+    private function audit(int $actorId, int $eventId, int $imageId, int $position, string $now): void
+    {
+        $this->db->insert('audit_logs', [
+            'actor_id' => $actorId, 'entity_type' => 'events', 'entity_id' => $eventId,
+            'action' => 'event.image_uploaded',
+            'metadata' => json_encode(['image_id' => $imageId, 'position' => $position], JSON_THROW_ON_ERROR),
+            'request_id' => bin2hex(random_bytes(16)), 'created_at' => $now,
+        ]);
     }
 }

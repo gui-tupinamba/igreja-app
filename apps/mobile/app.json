@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Comunidade",
+    "slug": "comunidade-igreja",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "comunidade",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.guitupinamba.igreja"
+    },
+    "android": {
+      "package": "dev.guitupinamba.igreja",
+      "predictiveBackGestureEnabled": true
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

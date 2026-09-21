@@ -13,6 +13,10 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'idx_post_images_post_position',
     columns: ['post_id', 'position', 'id']
 )]
+#[ORM\UniqueConstraint(
+    name: 'uniq_post_images_post_position',
+    columns: ['post_id', 'position']
+)]
 class PostImage
 {
     #[ORM\Id]

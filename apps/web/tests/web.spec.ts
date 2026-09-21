@@ -111,7 +111,7 @@ test("ADMIN cria e publica conteúdo e evento pela interface", async ({
   await page
     .getByLabel("Conteúdo", { exact: true })
     .fill("Conteúdo criado pela interface real.");
-  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await page.getByRole("button", { name: "Salvar rascunho", exact: true }).click();
   await page.getByRole("button", { name: title, exact: true }).click();
   await page.getByRole("button", { name: "Publicar", exact: true }).click();
   await page.getByRole("button", { name: "Confirmar", exact: true }).click();
@@ -156,11 +156,12 @@ test("gestão de pessoa, ministério, participação e liderança", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: "Ministérios", exact: true }).click();
   await page.getByRole("button", { name: "Novo ministério" }).click();
-  await page.getByLabel("Nome", { exact: true }).fill("Acolhimento Web");
+  const ministryName = `Acolhimento Web ${data.tag}`;
+  await page.getByLabel("Nome", { exact: true }).fill(ministryName);
   await page.getByLabel("Identificador").fill(`acolhimento-${data.tag}`);
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   const card = page.locator("article").filter({
-    has: page.getByRole("heading", { name: "Acolhimento Web", exact: true }),
+    has: page.getByRole("heading", { name: ministryName, exact: true }),
   });
   await card.getByRole("button", { name: "Participantes" }).click();
   await page
@@ -360,5 +361,7 @@ test("perfil persiste alterações e troca de senha encerra a sessão", async ({
     .fill(data.users.outsider.email);
   await page.getByLabel("Senha", { exact: true }).fill(nextPassword);
   await page.getByRole("button", { name: "Entrar na comunidade" }).click();
-  await expect(page.getByRole("heading", { name: /Olá,/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Perfil atualizado na Web", exact: true }),
+  ).toBeVisible();
 });

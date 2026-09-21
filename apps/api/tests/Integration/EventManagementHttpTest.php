@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class EventManagementHttpTest extends WebTestCase
 {
@@ -224,6 +225,50 @@ final class EventManagementHttpTest extends WebTestCase
             $this->request('DELETE', "/api/events/$id", $admin); self::assertResponseStatusCodeSame(500);
             self::assertSame($before, $this->db->fetchAssociative('SELECT * FROM events WHERE id = ?', [$id]));
         } finally { $this->db->executeStatement('ALTER TABLE audit_logs DROP CONSTRAINT test_reject_event_audit'); }
+    }
+
+    public function testProtectedImageUploadIsAuditedAndFollowsCurrentEventAccess(): void
+    {
+        $admin = $this->account('ADMIN');
+        $member = $this->account('MEMBER');
+        $outsider = $this->account('MEMBER');
+        $ministry = $this->ministry();
+        $this->join($member, $ministry);
+        $id = $this->event($admin, ['ministry_id' => $ministry, 'visibility' => 'MINISTRY_MEMBERS']);
+        $path = tempnam(sys_get_temp_dir(), 'event-image-');
+        self::assertNotFalse($path);
+        $source = imagecreatetruecolor(32, 16);
+        self::assertNotFalse($source);
+        imagefill($source, 0, 0, imagecolorallocate($source, 34, 91, 65));
+        imagepng($source, $path);
+        imagedestroy($source);
+        try {
+            $this->client->request('POST', "https://localhost/api/events/$id/images", files: [
+                'file' => new UploadedFile($path, 'agenda.png', 'image/png', null, true),
+            ], server: ['HTTP_AUTHORIZATION' => 'Bearer '.$admin['token']]);
+        } finally {
+            @unlink($path);
+        }
+        self::assertResponseStatusCodeSame(201);
+        $imageId = $this->body()['image']['id'];
+        self::assertSame(1, (int) $this->db->fetchOne(
+            "SELECT count(*) FROM audit_logs WHERE entity_type = 'events' AND entity_id = ? AND action = 'event.image_uploaded'",
+            [$id],
+        ));
+        $this->request('POST', "/api/events/$id/publish", $admin, []);
+
+        $this->request('GET', "/api/events/$id/images/$imageId/detail", $member);
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'image/webp');
+        $this->request('GET', "/api/events/$id/images/$imageId/detail", $outsider);
+        self::assertResponseStatusCodeSame(404);
+        $other = $this->event($admin);
+        $this->request('GET', "/api/events/$other/images/$imageId/detail", $admin);
+        self::assertResponseStatusCodeSame(404);
+        $this->request('DELETE', "/api/ministries/$ministry/members/".$member['id'], $admin);
+        self::assertResponseStatusCodeSame(204);
+        $this->request('GET', "/api/events/$id/images/$imageId/detail", $member);
+        self::assertResponseStatusCodeSame(404);
     }
 
     #[DataProvider('invalidEvents')]
