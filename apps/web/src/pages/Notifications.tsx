@@ -1,0 +1,18 @@
+import { useState, type FormEvent } from "react";
+import { Bell, Send } from "lucide-react";
+import { api } from "../api";
+import { useSession } from "../session";
+import { Badge, Empty, ErrorBox, Heading, Loading, date, useData } from "../ui";
+import type { Ministry, NotificationPage, Page } from "../types";
+
+export function NotificationsPage() {
+  const { user, permissions } = useSession();
+  const inbox=useData<NotificationPage>("/notifications?limit=50&page=1");
+  const ministries=useData<Page<Ministry>>(user.role==="ADMIN"||user.role==="PASTOR"?"/ministries?limit=100&page=1":null);
+  const [scope,setScope]=useState<"CHURCH"|"MINISTRY">(user.role==="LEADER"?"MINISTRY":"CHURCH"); const [busy,setBusy]=useState(false); const [error,setError]=useState<unknown>(); const [success,setSuccess]=useState("");
+  const canSend=user.role==="ADMIN"||user.role==="PASTOR"||permissions.led_ministries.length>0;
+  const available=user.role==="LEADER"?permissions.led_ministries:(ministries.data?.items||[]);
+  async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();const form=event.currentTarget;const data=new FormData(form);setBusy(true);setError(undefined);setSuccess("");try{await api("/admin/notifications","POST",{scope,ministry_id:scope==="MINISTRY"?Number(data.get("ministry_id")):undefined,title:String(data.get("title")),body:String(data.get("body")),route:String(data.get("route")||"")||undefined,idempotency_key:crypto.randomUUID()});form.reset();setSuccess("Aviso enviado e adicionado à caixa de entrada.");inbox.reload();}catch(e){setError(e);}finally{setBusy(false);}}
+  async function mark(id:number){try{await api(`/notifications/${id}/read`,"POST",{});inbox.reload();}catch(e){setError(e);}}
+  return <><Heading title="Avisos" subtitle={`${inbox.data?.unread_count||0} aviso(s) não lido(s)`}/><ErrorBox error={error||inbox.error}/>{canSend&&<form className="panel notification-composer" onSubmit={submit}><div className="section-head"><div><span className="eyebrow green">COMUNICAÇÃO</span><h2>Novo aviso</h2></div><Bell size={24}/></div><div className="form-grid"><label>Público<select value={scope} onChange={e=>setScope(e.target.value as "CHURCH"|"MINISTRY")}><option value="CHURCH" disabled={user.role==="LEADER"}>Toda a igreja</option><option value="MINISTRY">Ministério</option></select></label>{scope==="MINISTRY"&&<label>Ministério<select name="ministry_id" required><option value="">Selecione</option>{available.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>}<label className="wide">Título<input name="title" required maxLength={120}/></label><label className="wide">Mensagem<textarea name="body" required maxLength={1000} rows={4}/></label><label className="wide">Destino no aplicativo (opcional)<input name="route" placeholder="/agenda ou /events/123" maxLength={255}/></label></div><ErrorBox error={error}/>{success&&<div className="success" role="status">{success}</div>}<button className="primary" disabled={busy}><Send size={17}/>{busy?"Enviando…":"Enviar aviso"}</button></form>}{inbox.loading?<Loading/>:inbox.data?.items.length?<div className="notification-list">{inbox.data.items.map(item=><button key={item.id} className={`panel notification-card ${item.read_at?"":"unread"}`} onClick={()=>mark(item.id)}><div><Badge value={item.scope}/><h3>{item.title}</h3><p>{item.body}</p><small>{date(item.created_at)}</small></div>{!item.read_at&&<span className="notification-dot" aria-label="Não lido"/>}</button>)}</div>:!inbox.error&&<Empty title="Nenhum aviso">Os comunicados da comunidade aparecerão aqui.</Empty>}</>;
+}

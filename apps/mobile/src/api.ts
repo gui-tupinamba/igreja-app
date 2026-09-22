@@ -3,6 +3,7 @@ import type { User } from "./types";
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "https://api.guitupinamba.dev/api").replace(/\/$/, "");
 const REFRESH_KEY = "igreja.mobile.refresh";
+const PUSH_TOKEN_KEY = "igreja.mobile.expoPushToken";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public fields: Record<string, string> = {}) {
@@ -91,6 +92,11 @@ export async function clearSession() {
 export async function signOut() {
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
   try {
+    const pushToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+    if (pushToken && accessToken) {
+      await fetch(`${API_URL}/notifications/devices/unregister`, { method: "POST", headers: { ...authorizationHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ expo_push_token: pushToken }) }).catch(() => undefined);
+      await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
+    }
     if (refreshToken) await auth("logout", { refresh_token: refreshToken });
   } finally {
     await clearSession();

@@ -224,6 +224,11 @@ Detalhes em [mobile.md](mobile.md).
 
 ## Fase 14 — Notificações (posterior à estabilidade)
 
+**Estado:** implementada em 22/09/2026. Caixa de entrada Web/mobile, preferências,
+registro de dispositivos por sessão, destinatários autorizados e fila Expo com
+retry foram entregues. O envio externo permanece opt-in até a configuração EAS.
+Detalhes em [notifications.md](notifications.md).
+
 **Escopo:** registro de dispositivos, preferências, Expo Push, destinatários por igreja/ministério/usuário, status de leitura e processamento de entrega. Introduzir fila/worker quando justificado pelo volume e confiabilidade.
 
 **Aceite:** envio idempotente com política de retry; dispositivos inválidos removidos; vínculo atual determina destinatário; logout e troca de usuário não enviam dados ao usuário anterior; conteúdo privado não é revelado na tela bloqueada; navegação da notificação revalida acesso na API. Não tratar push como fonte de verdade.

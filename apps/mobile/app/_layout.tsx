@@ -1,8 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SessionProvider, useSession } from "@/session";
+import { listenForNotificationNavigation } from "@/push";
 import { colors } from "@/theme";
 
 function Routes() {
@@ -15,6 +17,7 @@ function Routes() {
 }
 
 export default function RootLayout() {
+  useEffect(() => listenForNotificationNavigation(), []);
   return <SafeAreaProvider><SessionProvider><StatusBar style="dark" /><Routes /></SessionProvider></SafeAreaProvider>;
 }
 

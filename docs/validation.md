@@ -1,4 +1,23 @@
-# Validação do projeto — fases 2 a 13
+# Validação do projeto — fases 2 a 15
+
+## Atualização de 22/09/2026
+
+- Fase 14 implementada: caixa de entrada autenticada na Web e no mobile, leitura,
+  preferências, registro Expo vinculado à sessão e audiências por igreja,
+  ministério ou usuário.
+- Worker `app:notifications:deliver`: lotes com lock, idempotência, retry
+  exponencial, invalidação de `DeviceNotRegistered` e payload de tela bloqueada
+  sem conteúdo privado. Sessão, usuário, função e participação são revalidados.
+- Migration `Version20260922120000` cria cinco tabelas, FKs, CHECKs, índices e
+  unicidade. Mapeamento Doctrine e banco isolado estão sincronizados.
+- API: **448 testes / 3.515 assertions aprovados**. Testes novos cobrem IDOR,
+  revogação de participação, escopo de líder, preferências, leitura,
+  idempotência e troca do token entre usuários.
+- Web: typecheck e build Vite aprovados. Mobile: typecheck e exports Android/iOS
+  aprovados com `expo-notifications ~57.0.20`.
+- Push externo permanece desativado até vincular o app ao EAS e definir as
+  credenciais descritas em [notifications.md](notifications.md); a caixa de
+  entrada funciona sem essas credenciais.
 
 ## Atualização de 21/09/2026
 

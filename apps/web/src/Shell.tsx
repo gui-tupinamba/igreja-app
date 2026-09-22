@@ -20,6 +20,7 @@ import {
   X,
   Plus,
   ArrowUpRight,
+  Bell,
 } from "lucide-react";
 import { Brand } from "./App";
 import { logout } from "./api";
@@ -39,6 +40,7 @@ import { ContentPage } from "./pages/Content";
 import { MinistriesPage } from "./pages/Ministries";
 import { UsersPage, ProfilePage } from "./pages/Users";
 import { CalendarPage } from "./pages/Calendar";
+import { NotificationsPage } from "./pages/Notifications";
 
 export default function Shell({ user }: { user: User }) {
   return (
@@ -62,6 +64,7 @@ function Layout() {
     ["/ministerios", "Ministérios", HandHeart],
     ["/eventos", "Eventos", CalendarDays],
     ["/agenda", "Agenda", CalendarCheck],
+    ["/avisos", "Avisos", Bell],
     ...(permissions.manage_users ? [["/pessoas", "Pessoas", Users]] : []),
     ["/perfil", "Meu perfil", UserRound],
   ] as const;
@@ -162,6 +165,7 @@ function Layout() {
               element={<ContentPage key="schedules" kind="schedules" />}
             />
             <Route path="/agenda" element={<CalendarPage />} />
+            <Route path="/avisos" element={<NotificationsPage />} />
             <Route path="/ministerios" element={<MinistriesPage />} />
             <Route
               path="/pessoas"

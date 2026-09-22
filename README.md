@@ -361,9 +361,10 @@ papéis antes da restauração. Inclua arquivos enviados e configurações no pl
 
 ## Próximas fases
 
-Fases 2–13 implementadas: infraestrutura, domínio, autenticação, autorização,
-usuários, ministérios, conteúdo, agenda, Web e aplicativo mobile. A próxima etapa
-é a fase 14, com notificações.
+Fases 2–15 implementadas: infraestrutura, domínio, autenticação, autorização,
+usuários, ministérios, conteúdo, agenda, Web, aplicativo mobile, notificações e
+acesso externo seguro. A fase 14 inclui caixa de entrada Web/mobile, preferências,
+dispositivos por sessão e fila Expo; configuração em [notifications.md](docs/notifications.md).
 A criação inicial é
 controlada por `docker compose exec php php bin/console app:admin:create`, com senha
 oculta e sem credenciais padrão. O primeiro ADMIN local foi criado pelo usuário.
@@ -376,6 +377,6 @@ Web (fase 12): [instruções](docs/web.md). Mobile (fase 13):
 [instruções](docs/mobile.md). A exposição externa está ativa por Cloudflare Tunnel
 nos hosts `guitupinamba.dev` e `api.guitupinamba.dev`, com HTTPS e origens restritas.
 
-API atualizada em 21/09/2026; **445 testes e 3.490 verificações** aprovados na suíte
+API atualizada em 22/09/2026; **448 testes e 3.515 verificações** aprovados na suíte
 completa com PostgreSQL isolado. A migration mais recente é
-`Version20260921120000`.
+`Version20260922120000`.

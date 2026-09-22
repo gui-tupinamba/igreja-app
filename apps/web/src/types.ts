@@ -84,3 +84,5 @@ export interface Profile {
   ministries: { id: number; name: string }[];
   led_ministries: { id: number; name: string }[];
 }
+export interface NotificationItem { id:number; scope:"CHURCH"|"MINISTRY"|"USER"; ministry_id:number|null; target_user_id:number|null; title:string; body:string; route:string|null; created_at:string; read_at:string|null; }
+export interface NotificationPage extends Page<NotificationItem> { unread_count:number; }

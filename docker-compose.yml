@@ -69,6 +69,8 @@ services:
       JWT_AUDIENCE: ${JWT_AUDIENCE:-igreja-clients}
       AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://guitupinamba.dev,https://www.guitupinamba.dev}
       AUTH_ALLOW_INSECURE_LOCAL: ${AUTH_ALLOW_INSECURE_LOCAL:-0}
+      EXPO_PUSH_ENABLED: ${EXPO_PUSH_ENABLED:-0}
+      EXPO_PUSH_ACCESS_TOKEN: ${EXPO_PUSH_ACCESS_TOKEN:-}
     secrets:
       - jwt_private
       - jwt_public
@@ -108,6 +110,28 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  notification-worker:
+    profiles: [workers]
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    command: [sh, -c, "while true; do php bin/console app:notifications:deliver --limit=100 || true; sleep 15; done"]
+    environment:
+      <<: *api-environment
+    secrets:
+      - jwt_private
+      - jwt_public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - database
     security_opt:
       - no-new-privileges:true
     logging: *logging

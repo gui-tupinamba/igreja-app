@@ -25,6 +25,9 @@ export const labels: Record<string, string> = {
   ARCHIVED: "Arquivado",
   PUBLIC: "Toda a igreja",
   MINISTRY_MEMBERS: "Integrantes do ministério",
+  CHURCH: "Toda a igreja",
+  MINISTRY: "Ministério",
+  USER: "Pessoa",
   VISIBLE: "Visível",
   HIDDEN: "Oculto",
 };

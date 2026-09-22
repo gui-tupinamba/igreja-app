@@ -67,3 +67,18 @@ export interface Comment {
   status: string;
   created_at: string;
 }
+
+export interface NotificationItem {
+  id: number;
+  scope: "CHURCH" | "MINISTRY" | "USER";
+  ministry_id: number | null;
+  target_user_id: number | null;
+  title: string;
+  body: string;
+  route: string | null;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface NotificationPage extends Page<NotificationItem> { unread_count: number; }
+export interface NotificationPreferences { push_enabled: boolean; church_push_enabled: boolean; ministry_push_enabled: boolean; }
