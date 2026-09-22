@@ -2,6 +2,13 @@
 
 ## Atualização de 22/09/2026
 
+- Fase 15 operacional concluída: backup real do PostgreSQL e uploads com SHA-256,
+  retenção de 14 dias e restauração comprovada em banco isolado com 19 tabelas e
+  9 migrations. O banco temporário foi removido após o teste.
+- `operations-check.ps1` aprovou health/ready públicos, quatro serviços essenciais,
+  migrations, idade do backup e espaço em disco. As duas rotinas diárias foram
+  instaladas e executadas pelo Agendador de Tarefas com resultado `0`; RPO de 24h
+  e RTO de 4h estão documentados.
 - Fase 14 implementada: caixa de entrada autenticada na Web e no mobile, leitura,
   preferências, registro Expo vinculado à sessão e audiências por igreja,
   ministério ou usuário.
@@ -417,9 +424,7 @@ executa a suíte completa. Health e ready devem retornar HTTP 200 pelo Nginx.
 
 ## Pendências fora desta fase
 
-Backup/restauração ainda estão documentados, sem execução comprovada. Continuam
-pendentes comentários, eventos, agenda, imagens, Web, mobile e Cloudflare Tunnel. Novas operações de escrita
-deverão aplicar as políticas e revalidar permissões dentro de suas transações.
-Recuperação pública de senha e agendamento de retenção permanecem pendentes;
-troca própria e redefinição administrativa foram implementadas na fase 6.
-A próxima fase do plano é comentários.
+Registro histórico: naquele marco, backup/restauração e fases posteriores ainda
+estavam pendentes. Foram concluídos nas atualizações acima. Recuperação pública de
+senha continua fora do escopo atual; troca própria e redefinição administrativa
+foram implementadas na fase 6.

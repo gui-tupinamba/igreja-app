@@ -373,7 +373,11 @@ Plano mínimo de dados:
 4. Restaurar periodicamente em banco isolado com `pg_restore`, aplicar/verificar migrations e conferir login, vínculos e visibilidade com contas de teste.
 5. Fazer backup antes de migrações relevantes; rollback de aplicação não desfaz automaticamente alteração de schema/dados. Preferir mudanças compatíveis e planejar recuperação.
 
-Frequência, retenção, perda tolerável de dados (RPO) e tempo tolerável de recuperação (RTO) devem ser acordados antes do lançamento. O marco de infraestrutura documenta essa necessidade; não afirma que backup automático ou restauração testada já existem.
+O procedimento operacional adota backup diário, retenção local de 14 dias, RPO de
+24 horas e RTO de 4 horas. Os scripts geram manifesto e checksums, instalam a rotina
+no Agendador de Tarefas e testam a restauração em banco isolado. A primeira execução
+comprovada em 22/09/2026 restaurou 19 tabelas e 9 migrations. Consulte
+[operations.md](operations.md).
 
 ## 10. Riscos e decisões a confirmar nas fases apropriadas
 
@@ -388,7 +392,7 @@ Frequência, retenção, perda tolerável de dados (RPO) e tempo tolerável de r
 | Conteúdo em ministério inativo | Ocultar do feed regular; manter manutenção/histórico para ADMIN/PASTOR. |
 | Upload e tamanho | Definir formatos, quota, limite e retenção antes de ativar upload; iniciar com imagens permitidas e armazenamento local encapsulado. |
 | Sessões e cookies | Durações propostas precisam de validação de uso; fluxo Web/Mobile e testes de CSRF devem estar fechados antes de liberar autenticação. |
-| Domínio e disponibilidade | Domínio, configuração Cloudflare e responsabilidade de operação serão definidos na fase 15; não bloqueiam o bootstrap local. |
+| Domínio e disponibilidade | `guitupinamba.dev` e `api.guitupinamba.dev` usam Cloudflare Tunnel; a operação no computador pessoal segue [operations.md](operations.md). |
 | Push | Implementar após estabilidade; destinatários e dados devem respeitar acesso atual. Evitar texto privado em notificações de tela bloqueada. |
 
 O roteiro e critérios verificáveis de cada fase estão em [implementation-plan.md](implementation-plan.md). Nenhuma pendência de produto acima exige antecipar telas ou recursos além do primeiro marco.

@@ -330,34 +330,25 @@ docker compose exec php php bin/console doctrine:schema:validate
 Não usar `doctrine:schema:update --force` como estratégia de implantação. Faça backup
 antes de alterações relevantes. O usuário restrito não possui `CREATEDB` por decisão.
 
-## Backup inicial
+## Backup e recuperação
 
-Com os nomes padrão do `.env`, um backup manual pode ser gerado dentro do container
-e copiado ao host. Isso evita corromper dumps binários por redirecionamento no
-Windows PowerShell 5:
+Gere um backup completo do banco e uploads com:
 
 ```powershell
-New-Item -ItemType Directory -Force backups
-docker compose exec -T postgres pg_dump -U igreja_admin -d igreja -Fc -f /tmp/igreja.dump
-docker compose cp postgres:/tmp/igreja.dump ./backups/igreja.dump
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup.ps1
 ```
 
-Use nome com data para preservar gerações; ajuste usuário/banco se personalizou o
-ambiente. Copie o dump para armazenamento externo protegido. O exemplo acima ainda
-é uma cópia no mesmo computador, sem automação ou restauração comprovada.
+O script mantém 14 dias por padrão e grava checksums no manifesto. Para validar a
+recuperação sem tocar no banco principal:
 
-Teste a recuperação em banco isolado, preservando o banco principal:
-
-```sh
-docker compose cp ./backups/igreja.dump postgres:/tmp/restore.dump
-docker compose exec -T postgres createdb -U igreja_admin igreja_restore_check
-docker compose exec -T postgres pg_restore -U igreja_admin -d igreja_restore_check --exit-on-error /tmp/restore.dump
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-restore.ps1 -BackupDirectory backups/<data-do-backup>
 ```
 
-O banco de verificação deve ser novo; não reutilize um que contenha dados.
-Valide tabelas e registros no banco restaurado, e futuramente os fluxos da aplicação.
-O papel `igreja_app` já existe nesse cluster; em outro servidor prepare os mesmos
-papéis antes da restauração. Inclua arquivos enviados e configurações no plano de backup.
+Instale as rotinas diárias do Agendador de Tarefas com
+`scripts/install-scheduled-tasks.ps1`. O procedimento completo, retenção e metas de
+recuperação estão em [operations.md](docs/operations.md). Mantenha uma cópia
+criptografada fora deste computador.
 
 ## Próximas fases
 

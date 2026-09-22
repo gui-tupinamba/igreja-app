@@ -243,6 +243,11 @@ Esta fase não precisa atrasar um MVP estável sem push; depende de decisão de 
 
 **Preparação operacional:** responsável, frequência e retenção de backups, RPO/RTO, atualização, logs, monitoramento e recuperação de credenciais definidos. Exposição externa só ocorre quando os módulos liberados e as verificações de segurança anteriores estiverem concluídos.
 
+**Estado:** implementada e validada em 22/09/2026. Os hosts públicos respondem por
+HTTPS, o diagnóstico operacional foi aprovado e o backup real foi restaurado em
+banco isolado (19 tabelas e 9 migrations), sem alterar o banco principal. A rotina
+diária, retenção, RPO/RTO e recuperação estão em [operations.md](operations.md).
+
 ## Como encerrar cada etapa
 
 Relatar de forma verificável:
