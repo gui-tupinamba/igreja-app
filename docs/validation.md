@@ -10,8 +10,9 @@
   instaladas e executadas pelo Agendador de Tarefas com resultado `0`; RPO de 24h
   e RTO de 4h estão documentados.
 - A cópia externa configurável foi validada com publicação atômica, SHA-256 e
-  retenção própria. As tarefas agora preservam logs locais; a ativação diária da
-  cópia externa depende apenas da escolha de um destino protegido.
+  retenção própria. Nesta instalação, o destino OneDrive `IgrejaApp-Backups` foi
+  preenchido e a tarefa diária das 03:15 executou com resultado `0`. As tarefas
+  preservam logs locais de sucesso e falha.
 - Fase 14 implementada: caixa de entrada autenticada na Web e no mobile, leitura,
   preferências, registro Expo vinculado à sessão e audiências por igreja,
   ministério ou usuário.
