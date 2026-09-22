@@ -18,6 +18,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/operations-check.ps1
 dois arquivos, calcula SHA-256 e grava `manifest.json`. A pasta `backups/` contém
 dados privados, fica fora do Git e não substitui uma cópia externa.
 
+Para copiar a geração mais recente a um disco externo, pasta de rede ou diretório
+sincronizado protegido, execute:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/copy-backup-external.ps1 -Destination "E:\IgrejaApp"
+```
+
+O destino precisa usar criptografia do dispositivo ou do provedor e acesso separado
+da aplicação. O script copia primeiro para uma área temporária, valida SHA-256,
+publica a geração completa e mantém 30 dias por padrão.
+
 No Agendador de Tarefas do Windows, configure o diretório inicial como a raiz do
 projeto e execute o backup uma vez ao dia. A instalação automática cria o backup
 às 03:00 e a verificação às 03:30 para o usuário atual:
@@ -26,9 +37,15 @@ projeto e execute o backup uma vez ao dia. A instalação automática cria o bac
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-scheduled-tasks.ps1
 ```
 
+Para incluir a cópia externa diária às 03:15, reinstale informando o destino:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-scheduled-tasks.ps1 -ExternalBackupDirectory "E:\IgrejaApp"
+```
+
 As tarefas usam a sessão do usuário e exigem Docker Desktop iniciado. Confira
-diariamente o último resultado no Agendador e registre falhas em um canal acompanhado
-pelo responsável.
+diariamente o último resultado no Agendador. Cada execução grava um arquivo em
+`.tmp/operations/`; registre falhas em um canal acompanhado pelo responsável.
 
 ## Teste mensal de recuperação
 
