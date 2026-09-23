@@ -1,5 +1,18 @@
 # Validação do projeto — fases 2 a 15
 
+## Atualização de 23/09/2026
+
+- Projeto nativo Android versionado e dependências validadas com `npm run typecheck`
+  e `npx expo install --check`.
+- `assembleRelease` aprovado para `arm64-v8a`, `x86` e `x86_64`; APK de teste com
+  91.641.627 bytes e SHA-256
+  `cafe08acd2d78784cc4e223b8062cbb1221a3c17eca83c43c12d7d49879c53b7`.
+- APK instalado no emulador Pixel 4: `MainActivity` permaneceu ativa, a sessão foi
+  restaurada, a tela inicial carregou dados da API e o log não apresentou exceção
+  fatal. Captura e artefatos permanecem em `artifacts/android`, fora do Git.
+- O APK atual usa assinatura de depuração e é destinado a teste. Uma chave própria
+  continua necessária antes da distribuição pela Play Store.
+
 ## Atualização de 22/09/2026
 
 - Fase 15 operacional concluída: backup real do PostgreSQL e uploads com SHA-256,

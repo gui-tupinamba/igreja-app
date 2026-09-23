@@ -28,6 +28,7 @@ apps/api/config/reference.php
 .cache/
 .tmp/
 backups/
+artifacts/
 *.dump
 *.sql.gz
 

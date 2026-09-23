@@ -12,6 +12,16 @@ npm ci
 npm start
 ```
 
+Para compilar e instalar o projeto nativo Android em um aparelho ou emulador:
+
+```powershell
+npm run android
+```
+
+O diretório `android` faz parte do repositório. Mudanças em opções nativas do
+`app.json` exigem regenerar o projeto com `npx expo prebuild` e revisar o diff antes
+do commit.
+
 Para apontar um aparelho a outro ambiente, copie `.env.example` para `.env` e
 defina `EXPO_PUBLIC_API_URL`. A URL precisa ser acessível pelo aparelho; o endereço
 `127.0.0.1` do computador não representa o computador dentro do celular.
@@ -38,3 +48,25 @@ npm run export
 
 O último comando gera bundles separados em `dist/android` e `dist/ios`. Esses
 artefatos são locais e permanecem fora do Git.
+
+## APK Android de teste
+
+Em 23/09/2026, `assembleRelease` foi aprovado para `arm64-v8a`, `x86` e `x86_64`.
+O APK foi instalado no emulador Pixel 4, iniciou `MainActivity`, restaurou a sessão,
+carregou conteúdo da API e não registrou exceção fatal. O artefato local fica em
+`artifacts/android/Comunidade-0.1.0-test.apk` e não é versionado.
+
+Esse APK usa a chave de depuração incluída no projeto nativo e serve para testes e
+homologação. A publicação na Play Store exige uma chave de assinatura própria e sua
+configuração segura no Gradle ou no EAS.
+
+No Windows, caminhos extensos podem ultrapassar o limite usado pelo CMake. Se isso
+ocorrer, associe temporariamente a raiz do repositório a uma unidade curta antes de
+executar o Gradle:
+
+```powershell
+subst I: C:\dev\igreja-app
+Set-Location I:\apps\mobile\android
+$env:NODE_ENV = 'production'
+.\gradlew.bat assembleRelease --no-daemon '-PreactNativeArchitectures=arm64-v8a,x86,x86_64'
+```
