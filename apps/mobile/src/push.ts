@@ -13,12 +13,12 @@ Notifications.setNotificationHandler({
 
 export async function enablePushNotifications(): Promise<string> {
   if (Platform.OS === "web") throw new Error("Notificações push estão disponíveis no aplicativo instalado.");
+  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+  if (!projectId) throw new Error("Este APK foi gerado sem vínculo com o projeto EAS. Instale uma versão atualizada do aplicativo.");
   if (Platform.OS === "android") await Notifications.setNotificationChannelAsync("default", { name: "Atualizações", importance: Notifications.AndroidImportance.DEFAULT });
   const current = await Notifications.getPermissionsAsync();
   const permission = current.status === "granted" ? current : await Notifications.requestPermissionsAsync();
   if (permission.status !== "granted") throw new Error("Permissão de notificações não concedida.");
-  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
-  if (!projectId) throw new Error("O projeto EAS ainda não foi vinculado a este aplicativo.");
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
   await api("/notifications/devices", "POST", { expo_push_token: token, platform: Platform.OS === "ios" ? "IOS" : "ANDROID" });
   await SecureStore.setItemAsync(TOKEN_KEY, token);

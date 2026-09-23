@@ -5,10 +5,25 @@ dispositivos por sessão e uma fila transacional para Expo Push. Avisos podem se
 direcionados à igreja (`CHURCH`), a um ministério (`MINISTRY`) ou a uma pessoa
 (`USER`). Líderes só enviam ao ministério em que mantêm liderança ativa.
 
-O aplicativo pede permissão quando a pessoa ativa o push na tela Notificações. Para
-um build real, execute `eas init` em `apps/mobile`, copie o project ID para
-`EXPO_PUBLIC_EAS_PROJECT_ID` e gere um development/production build. Push Android
-não funciona no Expo Go atual.
+O aplicativo pede permissão quando a pessoa ativa o push na tela Notificações. O
+projeto precisa estar vinculado ao EAS por `extra.eas.projectId`; `eas init` inclui
+esse UUID no `app.json`. Push Android não funciona no Expo Go atual.
+
+Para Android, também é obrigatório registrar `dev.guitupinamba.igreja` no Firebase,
+salvar o `google-services.json` em `apps/mobile` e definir
+`android.googleServicesFile` como `./google-services.json`. A chave privada da conta
+de serviço FCM V1 deve ser enviada ao EAS por `eas credentials` e nunca versionada.
+
+Depois da configuração, gere o APK interno com:
+
+```powershell
+cd apps/mobile
+npx eas-cli@latest build --platform android --profile preview
+```
+
+O `eas.json` mantém `preview` como APK instalável e `production` como Android App
+Bundle para distribuição. Mudanças no project ID ou no Firebase exigem novo build;
+elas não corrigem APKs já instalados.
 
 No servidor, o envio externo fica desligado por padrão. Depois de configurar as
 credenciais do projeto Expo, defina `EXPO_PUSH_ENABLED=1` e, caso a segurança de

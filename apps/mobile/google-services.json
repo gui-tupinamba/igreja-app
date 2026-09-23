@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "380911309882",
+    "project_id": "ieqcv-app-5d0e0425",
+    "storage_bucket": "ieqcv-app-5d0e0425.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:380911309882:android:0d77a50abe83da1bad1103",
+        "android_client_info": {
+          "package_name": "dev.guitupinamba.igreja"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBt7lLm3Fc9fJHVw5HT2YY5-aYxfFGf0U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

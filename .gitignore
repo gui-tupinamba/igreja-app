@@ -5,6 +5,7 @@
 !**/.env.example
 *.pem
 *.key
+*service-account*.json
 .secrets/
 
 # Dependencies, runtime files and builds

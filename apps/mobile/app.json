@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Comunidade",
-    "slug": "comunidade-igreja",
+    "slug": "ieqcv-app",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "comunidade",
@@ -12,12 +12,24 @@
     },
     "android": {
       "package": "dev.guitupinamba.igreja",
+      "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": true
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications"
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5d0e0425-7b4f-4577-80bc-17831021cc63"
+      }
+    },
+    "owner": "gui-tupinamba"
   }
 }
