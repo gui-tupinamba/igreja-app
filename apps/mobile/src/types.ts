@@ -54,6 +54,13 @@ export interface Ministry {
   status?: string;
 }
 
+export interface Permissions {
+  manage_users: boolean;
+  manage_ministries: boolean;
+  manage_settings: boolean;
+  led_ministries: { id: number; name: string }[];
+}
+
 export interface Profile {
   user: User;
   ministries: Ministry[];

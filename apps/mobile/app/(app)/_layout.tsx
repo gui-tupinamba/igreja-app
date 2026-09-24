@@ -43,6 +43,13 @@ export default function AppLayout() {
       />
 
       <Stack.Screen
+        name="post/create"
+        options={{
+          title: "Nova publicação",
+        }}
+      />
+
+      <Stack.Screen
         name="event/[id]"
         options={{
           title: "Encontro",
