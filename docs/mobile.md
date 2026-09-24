@@ -60,6 +60,14 @@ Esse APK usa a chave de depuração incluída no projeto nativo e serve para tes
 homologação. A publicação na Play Store exige uma chave de assinatura própria e sua
 configuração segura no Gradle ou no EAS.
 
+Em 24/09/2026, o projeto foi vinculado ao EAS/Firebase e um novo APK interno foi
+gerado com credenciais remotas e suporte a FCM V1. O artefato local é
+`artifacts/android/Comunidade-0.1.0-eas-push.apk`, com SHA-256
+`fa9440f5b9a892e4deb28ed0da1cdce01f1da345559bcdfdf9665739f6192774`.
+O aplicativo registrou o Expo Push Token na API e recebeu uma notificação real no
+emulador. Esse APK expira no armazenamento do EAS em 07/10/2026; a cópia local não
+é versionada.
+
 No Windows, caminhos extensos podem ultrapassar o limite usado pelo CMake. Se isso
 ocorrer, associe temporariamente a raiz do repositório a uma unidade curta antes de
 executar o Gradle:

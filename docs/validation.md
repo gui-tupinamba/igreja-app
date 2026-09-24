@@ -1,5 +1,19 @@
 # Validação do projeto — fases 2 a 15
 
+## Atualização de 24/09/2026
+
+- Projeto EAS `@gui-tupinamba/ieqcv-app` e Firebase `ieqcv-app-5d0e0425`
+  configurados para `dev.guitupinamba.igreja`; FCM V1 e keystore Android estão
+  armazenados no EAS, sem chave privada no repositório ou em Downloads.
+- Build EAS interno `3db62cf8-f590-4047-b330-02f491626ca5` concluído. APK oficial
+  com 107.063.746 bytes e SHA-256
+  `fa9440f5b9a892e4deb28ed0da1cdce01f1da345559bcdfdf9665739f6192774`.
+- APK iniciou sem exceção fatal, ativou push pela interface e registrou um
+  dispositivo ativo na API. O Expo aceitou o ticket de teste e o Android confirmou
+  uma notificação ativa para o pacote do aplicativo.
+- Envio externo habilitado na instalação local, worker recorrente iniciado e API
+  pública permaneceu pronta com HTTP 200.
+
 ## Atualização de 23/09/2026
 
 - Projeto nativo Android versionado e dependências validadas com `npm run typecheck`

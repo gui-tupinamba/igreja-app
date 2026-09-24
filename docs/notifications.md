@@ -25,6 +25,15 @@ O `eas.json` mantém `preview` como APK instalável e `production` como Android 
 Bundle para distribuição. Mudanças no project ID ou no Firebase exigem novo build;
 elas não corrigem APKs já instalados.
 
+Configuração Android ativa em 24/09/2026:
+
+- projeto EAS `@gui-tupinamba/ieqcv-app`, ID
+  `5d0e0425-7b4f-4577-80bc-17831021cc63`;
+- projeto Firebase `ieqcv-app-5d0e0425`;
+- pacote `dev.guitupinamba.igreja` registrado no Firebase;
+- credencial FCM V1 associada no EAS;
+- build interno EAS `3db62cf8-f590-4047-b330-02f491626ca5` concluído.
+
 No servidor, o envio externo fica desligado por padrão. Depois de configurar as
 credenciais do projeto Expo, defina `EXPO_PUSH_ENABLED=1` e, caso a segurança de
 acesso do Expo esteja ativa, `EXPO_PUSH_ACCESS_TOKEN`. Inicie o worker recorrente:

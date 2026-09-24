@@ -6,6 +6,7 @@
 *.pem
 *.key
 *service-account*.json
+*-firebase-adminsdk-*.json
 .secrets/
 
 # Dependencies, runtime files and builds
