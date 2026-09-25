@@ -60,15 +60,18 @@ export interface Content {
   address?: string | null;
   kind?: "EVENT" | "ACTIVITY";
 }
+
 export interface Comment {
   id: number;
   post_id: number;
   user_id: number;
+  user_name?: string | null;
   content: string;
   status: string;
   created_at: string;
   updated_at: string;
 }
+
 export interface Membership {
   id: number;
   user_id: number;

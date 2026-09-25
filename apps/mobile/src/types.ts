@@ -70,6 +70,7 @@ export interface Profile {
 export interface Comment {
   id: number;
   user_id: number;
+  user_name?: string | null;
   content: string;
   status: string;
   created_at: string;

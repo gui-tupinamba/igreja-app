@@ -50,6 +50,20 @@ export default function AppLayout() {
       />
 
       <Stack.Screen
+        name="schedule/create"
+        options={{
+          title: "Nova atividade",
+        }}
+      />
+
+      <Stack.Screen
+        name="post/edit/[id]"
+        options={{
+          title: "Editar publicação",
+        }}
+      />
+
+      <Stack.Screen
         name="event/[id]"
         options={{
           title: "Encontro",
@@ -62,11 +76,11 @@ export default function AppLayout() {
           title: "Ministério",
         }}
       />
-
+      
       <Stack.Screen
         name="notifications"
         options={{
-          title: "Notificações",
+          title: "Avisos",
         }}
       />
     </Stack>

@@ -757,7 +757,8 @@ function Comments({
           <article className="comment" key={c.id}>
             <div className="row-meta">
               <strong>
-                {c.user_id === user.id ? "Você" : `Membro #${c.user_id}`}
+                {c.user_name ||
+                  (c.user_id === user.id ? user.name : `Membro #${c.user_id}`)}
               </strong>
               <span>{date(c.created_at)}</span>
               {c.status === "HIDDEN" && <Badge value={c.status} />}
