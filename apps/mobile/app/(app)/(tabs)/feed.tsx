@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Modal,
   Pressable,
@@ -253,21 +253,6 @@ export default function Feed() {
             subtitle="Notícias, palavras e momentos da nossa comunidade."
           />
         </View>
-
-        {canManage ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Criar nova publicação"
-            onPress={() => router.push("/(app)/post/create")}
-            style={({ pressed }) => [
-              styles.addButton,
-
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons name="add" size={28} color={colors.white} />
-          </Pressable>
-        ) : null}
       </View>
 
       {/* COMUNIDADE / GERENCIAR */}
@@ -611,6 +596,7 @@ function FilterOptionsModal({
   onClose: () => void;
   onSelect: (value: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={visible}
@@ -621,7 +607,14 @@ function FilterOptionsModal({
       <View style={styles.modalContainer}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
 
-        <View style={styles.modalCard}>
+        <View
+          style={[
+            styles.modalCard,
+            {
+              paddingBottom: Math.max(insets.bottom + 28, 48),
+            },
+          ]}
+        >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
 
@@ -952,7 +945,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     paddingHorizontal: 18,
     paddingTop: 18,
-    paddingBottom: 28,
   },
 
   modalHeader: {

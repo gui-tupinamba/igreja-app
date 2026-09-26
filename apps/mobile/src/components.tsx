@@ -25,7 +25,19 @@ export function ErrorState({ error, retry }: { error: unknown; retry?: () => voi
 export function Empty({ children }: { children: ReactNode }) { return <View style={styles.state}><Text style={styles.emptyTitle}>Nada por aqui ainda</Text><Text style={styles.muted}>{children}</Text></View>; }
 
 export function Badge({ value }: { value: string }) {
-  const labels: Record<string, string> = { PUBLIC: "Toda a igreja", MINISTRY_MEMBERS: "Integrantes", PUBLISHED: "Publicado", CANCELLED: "Cancelado", ADMIN: "Administrador", PASTOR: "Pastor", LEADER: "Líder", MEMBER: "Membro" };
+  const labels: Record<string, string> = {
+    PUBLIC: "Toda a igreja",
+    MINISTRY_MEMBERS: "Integrantes",
+    DRAFT: "Rascunho",
+    PENDING_REVIEW: "Aguardando revisão",
+    PUBLISHED: "Publicado",
+    CANCELLED: "Cancelado",
+    ARCHIVED: "Arquivado",
+    ADMIN: "Administrador",
+    PASTOR: "Pastor",
+    LEADER: "Líder",
+    MEMBER: "Membro",
+  };
   return <View style={styles.badge}><Text style={styles.badgeText}>{labels[value] || value}</Text></View>;
 }
 

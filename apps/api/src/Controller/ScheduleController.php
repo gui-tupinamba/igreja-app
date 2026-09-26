@@ -76,6 +76,34 @@ final readonly class ScheduleController
         return $this->json(['schedule' => ScheduleView::data($this->schedules->transition($this->actor->get(), ApiInput::id($id), ScheduleStatus::PUBLISHED))]);
     }
 
+    #[Route(
+    '/api/schedules/{id}/submit-review',
+    name: 'api_schedule_submit_review',
+    requirements: [
+        'id' => '[0-9]+',
+    ],
+    methods: ['POST']
+)]
+public function submitReview(
+    string $id,
+    Request $request,
+): JsonResponse {
+    $this->emptyRequest(
+        $request,
+    );
+
+    return $this->json([
+        'schedule' =>
+            ScheduleView::data(
+                $this->schedules->transition(
+                    $this->actor->get(),
+                    ApiInput::id($id),
+                    ScheduleStatus::PENDING_REVIEW,
+                ),
+            ),
+    ]);
+}
+
     #[Route('/api/schedules/{id}/unpublish', name: 'api_schedule_unpublish', requirements: ['id' => '[0-9]+'], methods: ['POST'])]
     public function unpublish(string $id, Request $request): JsonResponse
     {

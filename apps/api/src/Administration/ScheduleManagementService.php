@@ -68,24 +68,155 @@ final readonly class ScheduleManagementService
         });
     }
 
-    public function transition(AuthenticatedActor $actor, int $id, ScheduleStatus $status): array
-    {
-        return $this->transaction($actor, function (string $now) use ($actor, $id, $status): array {
-            $schedule = $this->lockSchedule($id);
-            $ministry = $schedule['ministry_id'] === null ? null : (int) $schedule['ministry_id'];
-            $this->lockMinistries($actor->userId, [$ministry]);
-            $this->requireOrigin($actor->userId, $ministry);
-            if ($status === ScheduleStatus::PUBLISHED) { $this->requireDestination($actor->userId, $ministry, true); }
-            // Cancelling a draft/archive must never expose unpublished content.
-            if ($status === ScheduleStatus::CANCELLED && !in_array($schedule['status'], ['PUBLISHED','CANCELLED'], true)) { throw new ConflictHttpException(); }
-            if ($schedule['status'] !== $status->value) {
-                $changes = ['status' => $status->value, 'updated_at' => $now];
-                $this->db->update('ministry_schedules', $changes, ['id' => $id]);
-                $this->audit($actor->userId, $id, 'schedule.status_changed', ['before' => $schedule['status'], 'after' => $status->value], $now);
+    public function transition(
+    AuthenticatedActor $actor,
+    int $id,
+    ScheduleStatus $status,
+): array {
+    return $this->transaction(
+        $actor,
+        function (string $now) use (
+            $actor,
+            $id,
+            $status,
+        ): array {
+            $schedule =
+                $this->lockSchedule(
+                    $id,
+                );
+
+            $ministry =
+                $schedule['ministry_id'] === null
+                    ? null
+                    : (int) $schedule['ministry_id'];
+
+            $this->lockMinistries(
+                $actor->userId,
+                [$ministry],
+            );
+
+            $this->requireOrigin(
+                $actor->userId,
+                $ministry,
+            );
+
+            /*
+             * Publicação exige
+             * ADMIN ou PASTOR.
+             */
+            if (
+                $status ===
+                ScheduleStatus::PUBLISHED
+            ) {
+                $this->requirePublisher(
+                    $actor->userId,
+                );
+
+                $this->requireDestination(
+                    $actor->userId,
+                    $ministry,
+                    true,
+                );
+
+                if (
+                    !in_array(
+                        $schedule['status'],
+                        [
+                            ScheduleStatus::DRAFT->value,
+                            ScheduleStatus::PENDING_REVIEW->value,
+                        ],
+                        true,
+                    )
+                ) {
+                    throw new ConflictHttpException();
+                }
             }
-            return $this->db->fetchAssociative('SELECT * FROM ministry_schedules WHERE id = ?', [$id]);
-        });
-    }
+
+            /*
+             * Líder apenas envia
+             * para revisão.
+             */
+            if (
+                $status ===
+                ScheduleStatus::PENDING_REVIEW
+            ) {
+                $this->requireReviewSubmitter(
+                    $actor->userId,
+                );
+
+                if (
+                    !in_array(
+                        $schedule['status'],
+                        [
+                            ScheduleStatus::DRAFT->value,
+                            ScheduleStatus::PENDING_REVIEW->value,
+                        ],
+                        true,
+                    )
+                ) {
+                    throw new ConflictHttpException();
+                }
+            }
+
+            if (
+                $status ===
+                    ScheduleStatus::CANCELLED
+                &&
+                !in_array(
+                    $schedule['status'],
+                    [
+                        ScheduleStatus::PUBLISHED->value,
+                        ScheduleStatus::CANCELLED->value,
+                    ],
+                    true,
+                )
+            ) {
+                throw new ConflictHttpException();
+            }
+
+            if (
+                $schedule['status'] !==
+                $status->value
+            ) {
+                $changes = [
+                    'status' =>
+                        $status->value,
+
+                    'updated_at' =>
+                        $now,
+                ];
+
+                $this->db->update(
+                    'ministry_schedules',
+                    $changes,
+                    [
+                        'id' => $id,
+                    ],
+                );
+
+                $this->audit(
+                    $actor->userId,
+                    $id,
+                    'schedule.status_changed',
+                    [
+                        'before' =>
+                            $schedule['status'],
+
+                        'after' =>
+                            $status->value,
+                    ],
+                    $now,
+                );
+            }
+
+            return $this->db
+                ->fetchAssociative(
+                    'SELECT * FROM ministry_schedules WHERE id = ?',
+                    [$id],
+                );
+        },
+    );
+}
 
     private function transaction(AuthenticatedActor $actor, callable $operation): array
     {
@@ -127,6 +258,51 @@ final readonly class ScheduleManagementService
     {
         if (!$this->policy->canManageContent($actorId, $ministry)) { throw new AccessDeniedHttpException(); }
         if ($requireActive && $ministry !== null && $this->db->fetchOne('SELECT status FROM ministries WHERE id = ?', [$ministry]) !== 'ACTIVE') { throw new ConflictHttpException(); }
+    }
+
+    private function requirePublisher(
+        int $actorId,
+    ): void {
+        $actor =
+            $this->policy->actor(
+                $actorId,
+            );
+
+        if (
+            $actor === null
+            ||
+            $actor['status'] !== 'ACTIVE'
+            ||
+            !in_array(
+                $actor['role'],
+                [
+                    'ADMIN',
+                    'PASTOR',
+                ],
+                true,
+            )
+        ) {
+            throw new AccessDeniedHttpException();
+        }
+    }
+
+    private function requireReviewSubmitter(
+        int $actorId,
+    ): void {
+        $actor =
+            $this->policy->actor(
+                $actorId,
+            );
+
+        if (
+            $actor === null
+            ||
+            $actor['status'] !== 'ACTIVE'
+            ||
+            $actor['role'] !== 'LEADER'
+        ) {
+            throw new AccessDeniedHttpException();
+        }
     }
 
     private function audit(int $actorId, int $id, string $action, array $metadata, string $now): void

@@ -68,24 +68,162 @@ final readonly class EventManagementService
         });
     }
 
-    public function transition(AuthenticatedActor $actor, int $id, EventStatus $status): array
-    {
-        return $this->transaction($actor, function (string $now) use ($actor, $id, $status): array {
-            $event = $this->lockEvent($id);
-            $ministry = $event['ministry_id'] === null ? null : (int) $event['ministry_id'];
-            $this->lockMinistries($actor->userId, [$ministry]);
-            $this->requireOrigin($actor->userId, $ministry);
-            if ($status === EventStatus::PUBLISHED) { $this->requireDestination($actor->userId, $ministry, true); }
-            // Cancelling a draft/archive must never expose unpublished content.
-            if ($status === EventStatus::CANCELLED && !in_array($event['status'], ['PUBLISHED','CANCELLED'], true)) { throw new ConflictHttpException(); }
-            if ($event['status'] !== $status->value) {
-                $changes = ['status' => $status->value, 'updated_at' => $now];
-                $this->db->update('events', $changes, ['id' => $id]);
-                $this->audit($actor->userId, $id, 'event.status_changed', ['before' => $event['status'], 'after' => $status->value], $now);
+public function transition(
+    AuthenticatedActor $actor,
+    int $id,
+    EventStatus $status,
+): array {
+    return $this->transaction(
+        $actor,
+        function (string $now) use (
+            $actor,
+            $id,
+            $status,
+        ): array {
+            $event =
+                $this->lockEvent($id);
+
+            $ministry =
+                $event['ministry_id'] === null
+                    ? null
+                    : (int) $event['ministry_id'];
+
+            $this->lockMinistries(
+                $actor->userId,
+                [$ministry],
+            );
+
+            $this->requireOrigin(
+                $actor->userId,
+                $ministry,
+            );
+
+            /*
+             * Somente ADMIN e PASTOR
+             * podem publicar.
+             */
+            if (
+                $status ===
+                EventStatus::PUBLISHED
+            ) {
+                $this->requirePublisher(
+                    $actor->userId,
+                );
+
+                $this->requireDestination(
+                    $actor->userId,
+                    $ministry,
+                    true,
+                );
+
+                /*
+                 * Só permitimos publicação
+                 * a partir de DRAFT ou
+                 * PENDING_REVIEW.
+                 */
+                if (
+                    !in_array(
+                        $event['status'],
+                        [
+                            EventStatus::DRAFT->value,
+                            EventStatus::PENDING_REVIEW->value,
+                        ],
+                        true,
+                    )
+                ) {
+                    throw new ConflictHttpException();
+                }
             }
-            return $this->db->fetchAssociative('SELECT * FROM events WHERE id = ?', [$id]);
-        });
-    }
+
+            /*
+             * Somente LÍDER envia
+             * para revisão.
+             */
+            if (
+                $status ===
+                EventStatus::PENDING_REVIEW
+            ) {
+                $this->requireReviewSubmitter(
+                    $actor->userId,
+                );
+
+                if (
+                    !in_array(
+                        $event['status'],
+                        [
+                            EventStatus::DRAFT->value,
+                            EventStatus::PENDING_REVIEW->value,
+                        ],
+                        true,
+                    )
+                ) {
+                    throw new ConflictHttpException();
+                }
+            }
+
+            /*
+             * CANCELLED somente pode vir
+             * de conteúdo que já foi publicado.
+             */
+            if (
+                $status ===
+                    EventStatus::CANCELLED
+                &&
+                !in_array(
+                    $event['status'],
+                    [
+                        EventStatus::PUBLISHED->value,
+                        EventStatus::CANCELLED->value,
+                    ],
+                    true,
+                )
+            ) {
+                throw new ConflictHttpException();
+            }
+
+            if (
+                $event['status'] !==
+                $status->value
+            ) {
+                $changes = [
+                    'status' =>
+                        $status->value,
+
+                    'updated_at' =>
+                        $now,
+                ];
+
+                $this->db->update(
+                    'events',
+                    $changes,
+                    [
+                        'id' => $id,
+                    ],
+                );
+
+                $this->audit(
+                    $actor->userId,
+                    $id,
+                    'event.status_changed',
+                    [
+                        'before' =>
+                            $event['status'],
+
+                        'after' =>
+                            $status->value,
+                    ],
+                    $now,
+                );
+            }
+
+            return $this->db
+                ->fetchAssociative(
+                    'SELECT * FROM events WHERE id = ?',
+                    [$id],
+                );
+        },
+    );
+}
 
     private function transaction(AuthenticatedActor $actor, callable $operation): array
     {
@@ -127,6 +265,51 @@ final readonly class EventManagementService
     {
         if (!$this->policy->canManageContent($actorId, $ministry)) { throw new AccessDeniedHttpException(); }
         if ($requireActive && $ministry !== null && $this->db->fetchOne('SELECT status FROM ministries WHERE id = ?', [$ministry]) !== 'ACTIVE') { throw new ConflictHttpException(); }
+    }
+
+    private function requirePublisher(
+        int $actorId,
+    ): void {
+        $actor =
+            $this->policy->actor(
+                $actorId,
+            );
+
+        if (
+            $actor === null
+            ||
+            $actor['status'] !== 'ACTIVE'
+            ||
+            !in_array(
+                $actor['role'],
+                [
+                    'ADMIN',
+                    'PASTOR',
+                ],
+                true,
+            )
+        ) {
+            throw new AccessDeniedHttpException();
+        }
+    }
+
+    private function requireReviewSubmitter(
+        int $actorId,
+    ): void {
+        $actor =
+            $this->policy->actor(
+                $actorId,
+            );
+
+        if (
+            $actor === null
+            ||
+            $actor['status'] !== 'ACTIVE'
+            ||
+            $actor['role'] !== 'LEADER'
+        ) {
+            throw new AccessDeniedHttpException();
+        }
     }
 
     private function audit(int $actorId, int $id, string $action, array $metadata, string $now): void

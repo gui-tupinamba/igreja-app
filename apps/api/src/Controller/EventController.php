@@ -94,6 +94,34 @@ final readonly class EventController
             EventStatus::PUBLISHED))]);
     }
 
+    #[Route(
+    '/api/events/{id}/submit-review',
+    name: 'api_event_submit_review',
+    requirements: [
+        'id' => '[0-9]+',
+    ],
+    methods: ['POST']
+)]
+public function submitReview(
+    string $id,
+    Request $request,
+): JsonResponse {
+    $this->emptyRequest(
+        $request,
+    );
+
+    return $this->json([
+        'event' =>
+            EventView::data(
+                $this->events->transition(
+                    $this->actor->get(),
+                    ApiInput::id($id),
+                    EventStatus::PENDING_REVIEW,
+                ),
+            ),
+    ]);
+}
+
     #[Route('/api/events/{id}/unpublish', name: 'api_event_unpublish', requirements: ['id' => '[0-9]+'], methods: ['POST'])]
     public function unpublish(string $id, Request $request): JsonResponse
     {

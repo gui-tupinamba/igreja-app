@@ -54,6 +54,17 @@ export interface Ministry {
   status?: string;
 }
 
+export interface Membership {
+  id: number;
+  user_id: number;
+  ministry_id: number;
+  name: string;
+  role: Role;
+  status: string;
+  user_status: string;
+  is_leader: boolean;
+}
+
 export interface Permissions {
   manage_users: boolean;
   manage_ministries: boolean;

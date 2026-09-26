@@ -1,5 +1,7 @@
 import { Stack } from "expo-router";
-
+import { Pressable } from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/theme";
 
 export default function AppLayout() {
@@ -28,6 +30,43 @@ export default function AppLayout() {
         headerBackTitle: "Voltar",
       }}
     >
+      <Stack.Screen
+        name="schedule/manage"
+        options={{
+          title: "Gerenciar atividades",
+
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/(app)/(tabs)/agenda");
+                }
+              }}
+              style={{
+                width: 42,
+                height: 42,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 6,
+              }}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.ink} />
+            </Pressable>
+          ),
+        }}
+      />
+
+      <Stack.Screen
+        name="schedule/[id]"
+        options={{
+          title: "Atividade",
+        }}
+      />
+
       <Stack.Screen
         name="(tabs)"
         options={{
@@ -76,7 +115,7 @@ export default function AppLayout() {
           title: "Ministério",
         }}
       />
-      
+
       <Stack.Screen
         name="notifications"
         options={{

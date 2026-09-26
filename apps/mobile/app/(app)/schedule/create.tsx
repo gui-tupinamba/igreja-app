@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSession } from "@/session";
 
 import {
   Modal,
@@ -40,6 +41,8 @@ type PickerMode = "start-date" | "start-time" | "end-date" | "end-time" | null;
 
 export default function CreateSchedule() {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
+  const canPublish = user?.role === "ADMIN" || user?.role === "PASTOR";
   const access = useResource<{
     permissions: Permissions;
   }>("/auth/permissions");
@@ -186,9 +189,8 @@ export default function CreateSchedule() {
 
     try {
       /*
-       * Primeiro criamos a atividade
-       * como DRAFT.
-       */
+        * Toda atividade nasce como DRAFT.
+        */
       const result = await api<{
         schedule: Content;
       }>("/schedules", "POST", {
@@ -206,13 +208,15 @@ export default function CreateSchedule() {
       });
 
       /*
-       * Depois publicamos.
-       *
-       * ADMIN, PASTOR e LÍDER podem
-       * publicar atividades que têm
-       * permissão para administrar.
-       */
-      await api(`/schedules/${result.schedule.id}/publish`, "POST", {});
+        * ADMIN / PASTOR:
+        * publica diretamente.
+        *
+        * LÍDER:
+        * envia para revisão.
+        */
+      const action = canPublish ? "publish" : "submit-review";
+
+      await api(`/schedules/${result.schedule.id}/${action}`, "POST", {});
 
       router.replace("/(app)/(tabs)/agenda");
     } catch (reason) {
@@ -412,7 +416,24 @@ export default function CreateSchedule() {
           </Pressable>
         )}
 
-        {/* PUBLICAR */}
+        {/* REVISÃO */}
+
+        {!canPublish ? (
+          <View style={styles.reviewInfo}>
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color={colors.green}
+            />
+
+            <Text style={styles.reviewInfoText}>
+              A atividade será enviada para aprovação de um Pastor ou
+              Administrador antes de aparecer na agenda.
+            </Text>
+          </View>
+        ) : null}
+
+        {/* PUBLICAR / ENVIAR PARA REVISÃO */}
 
         <Pressable
           accessibilityRole="button"
@@ -427,10 +448,20 @@ export default function CreateSchedule() {
             pressed && !busy && styles.pressed,
           ]}
         >
-          <Ionicons name="calendar-outline" size={19} color={colors.white} />
+          <Ionicons
+            name={canPublish ? "calendar-outline" : "send-outline"}
+            size={19}
+            color={colors.white}
+          />
 
           <Text style={[common.buttonText, styles.publishText]}>
-            {busy ? "Publicando…" : "Salvar e publicar"}
+            {busy
+              ? canPublish
+                ? "Publicando…"
+                : "Enviando…"
+              : canPublish
+                ? "Salvar e publicar"
+                : "Enviar para revisão"}
           </Text>
         </Pressable>
       </Card>
@@ -619,6 +650,45 @@ function formatTime(date: Date) {
 }
 
 const styles = StyleSheet.create({
+    reviewInfo: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+
+    backgroundColor: colors.greenSoft,
+
+    borderRadius: 12,
+
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+
+    marginBottom: 14,
+  },
+
+  reviewInfoText: {
+    flex: 1,
+
+    color: colors.muted,
+
+    fontSize: 12,
+    lineHeight: 18,
+
+    fontWeight: "700",
+  },
+
+  publishButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+
+    gap: 8,
+  },
+
+  publishText: {
+    flexShrink: 1,
+    textAlign: "center",
+  },
+
   selectButton: {
     minHeight: 50,
     flexDirection: "row",
@@ -732,15 +802,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontWeight: "700",
     fontSize: 12,
-  },
-
-  publishButton: {
-    flexDirection: "row",
-    gap: 7,
-  },
-
-  publishText: {
-    marginLeft: 2,
   },
 
   modalContainer: {
